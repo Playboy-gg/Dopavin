@@ -1,0 +1,16 @@
+#!/bin/sh
+# MobileIDE Project Kotlin LSP Classpath
+if [ -f ".mobileide/classpath" ]; then
+    cat .mobileide/classpath
+    exit 0
+fi
+CP="/root/Android/Sdk/platforms/android-34/android.jar:/root/.mobileide/kotlin/2.1.0/lib/allopen-compiler-plugin.jar:/root/.mobileide/kotlin/2.1.0/lib/android-extensions-compiler.jar:/root/.mobileide/kotlin/2.1.0/lib/android-extensions-runtime.jar:/root/.mobileide/kotlin/2.1.0/lib/annotations-13.0.jar:/root/.mobileide/kotlin/2.1.0/lib/assignment-compiler-plugin.jar:/root/.mobileide/kotlin/2.1.0/lib/compose-compiler-plugin.jar:/root/.mobileide/kotlin/2.1.0/lib/js.engines.jar:/root/.mobileide/kotlin/2.1.0/lib/jvm-abi-gen.jar:/root/.mobileide/kotlin/2.1.0/lib/kotlin-annotation-processing-cli.jar:/root/.mobileide/kotlin/2.1.0/lib/kotlin-annotation-processing-compiler.jar"
+# Fallback transforms search if pre-generated cache is missing
+for tf in /root/.gradle/caches/transforms-3 /root/.gradle/caches/transforms-4; do
+    if [ -d "$tf" ]; then
+        for c in $(find "$tf" -name "classes.jar" 2>/dev/null | head -n 35); do
+            CP="${CP:+$CP:}$c"
+        done
+    fi
+done
+echo "$CP"

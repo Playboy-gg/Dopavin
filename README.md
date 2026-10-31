@@ -103,6 +103,10 @@ docs/          scope, design system, architecture, motion rules, audits
 
 Full notices and licence texts are in [`docs/licenses/`](docs/licenses/).
 
+## Releases and updates
+
+Dopavin checks the latest [GitHub release](https://github.com/playboy-gg/Dopavin/releases) for a newer version (Settings > Updates), shows its notes and can download and install it inside the app after you confirm. See [`docs/14_RELEASING.md`](docs/14_RELEASING.md) for what to upload with each version, and [`CHANGELOG.md`](CHANGELOG.md) for what changed.
+
 ## Contributing
 
 Issues and suggestions are welcome. Before changing code, read [`AGENTS.md`](AGENTS.md) and [`docs/10_UI_RULES.md`](docs/10_UI_RULES.md), and record meaningful changes in the implementation log.

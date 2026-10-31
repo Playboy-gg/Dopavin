@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="list_download_all">Download all</string>
+    <string name="list_add_all_queue">Add all to queue</string>
+    <string name="dl_all_started">Downloading %1$d songs</string>
+    <string name="dl_all_nothing">Everything here is already saved or downloading.</string>
+    <string name="settings_haptics">Haptic feedback</string>
+    <string name="settings_haptics_body">A light vibration on taps and tab changes.</string>
+    <string name="recap_play_top">Play top songs</string>
+</resources>

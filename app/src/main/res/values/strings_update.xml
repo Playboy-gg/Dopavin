@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check_now">Check for updates</string>
+    <string name="update_idle">Looks for a newer version on GitHub</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_up_to_date">You have the latest version</string>
+    <string name="update_available_short">A new version is available</string>
+    <string name="update_failed">Could not reach GitHub. Try again later.</string>
+    <string name="update_auto">Check automatically</string>
+    <string name="update_auto_on">On: when the app opens, at most twice a day</string>
+    <string name="update_auto_off">Off</string>
+    <string name="update_version_line">Version %1$s is available</string>
+    <string name="update_whats_new">What\'s new</string>
+    <string name="update_download">Download update</string>
+    <string name="update_install">Install update</string>
+    <string name="update_retry">Try again</string>
+    <string name="update_cancel">Cancel download</string>
+    <string name="update_open_page">Open release page</string>
+    <string name="update_badge">New</string>
+    <string name="update_installed_version">Installed: %1$s</string>
+    <string name="update_no_notes">This release has no notes.</string>
+    <string name="update_downloading">Starting download…</string>
+    <string name="update_downloading_percent">Downloading… %1$d%%</string>
+    <string name="update_downloading_cd">Download %1$d percent</string>
+    <string name="update_ready">Downloaded and checked. Android will ask you to confirm the install.</string>
+    <string name="update_allow_installs">Allow installs from Dopavin, then go back and tap Install update</string>
+    <string name="update_available_toast">A new version is available. See Settings → Updates.</string>
+    <string name="update_err_network">The download failed. Check your connection and try again.</string>
+    <string name="update_err_storage">Not enough free space to download the update.</string>
+    <string name="update_err_invalid">The downloaded file is not a valid app package.</string>
+    <string name="update_err_not_update">The downloaded file is not a newer version of Dopavin.</string>
+    <string name="update_err_signature">The downloaded file is signed with a different key, so it was not installed.</string>
+    <string name="update_err_install">Could not open the installer.</string>
+</resources>

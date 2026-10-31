@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_radios">Radios</string>
+    <string name="radio_card_title">%1$s Radio</string>
+    <string name="radio_card_subtitle">From %1$s</string>
+    <string name="radio_play">Play</string>
+    <string name="radio_shuffle">Shuffle</string>
+    <string name="radio_save">Save as playlist</string>
+    <string name="cd_radio_card">%1$s radio, based on %2$s</string>
+</resources>

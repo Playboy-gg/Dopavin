@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="crash_title">Dopavin stopped</string>
+    <string name="crash_body">Something went wrong. The report below shows what happened; copy or share it so it can be fixed.</string>
+    <string name="crash_copy">Copy</string>
+    <string name="crash_copied">Report copied</string>
+    <string name="crash_share">Share</string>
+    <string name="crash_restart">Restart</string>
+    <string name="crash_no_report">No report was saved.</string>
+    <string name="crash_log_title">Crash reports</string>
+    <string name="crash_log_row">Crash reports (debug build)</string>
+    <string name="crash_log_empty">No crashes stored. Crashes of this debug build appear here.</string>
+    <string name="crash_log_native">Native crashes (renderer, graphics) cannot be caught by the app and are not listed here.</string>
+    <string name="crash_log_delete">Delete</string>
+    <string name="crash_log_clear">Clear all</string>
+</resources>

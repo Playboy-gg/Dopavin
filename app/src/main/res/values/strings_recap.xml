@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recap_title">Recap</string>
+    <string name="recap_subtitle">What you have been listening to</string>
+    <string name="recap_week">7 days</string>
+    <string name="recap_month">30 days</string>
+    <string name="recap_all">All time</string>
+    <string name="recap_minutes_label">Minutes listened</string>
+    <string name="recap_plays_label">Plays</string>
+    <string name="recap_songs_label">Songs</string>
+    <string name="recap_artists_label">Artists</string>
+    <string name="recap_chart_week">Minutes per day, last 7 days</string>
+    <string name="recap_chart_month">Minutes per day, last 30 days</string>
+    <string name="recap_top_artists">Top artists</string>
+    <string name="recap_top_songs">Top songs</string>
+    <string name="recap_plays_count">%1$d plays</string>
+    <string name="recap_empty_title">Your recap starts here</string>
+    <string name="recap_empty_body">A song is counted after you have listened to it for 30 seconds. It is added when you move on to the next song.</string>
+    <string name="recap_note">Stored only on this device.</string>
+    <string name="recap_clear">Clear Recap</string>
+    <string name="recap_clear_confirm">Clear all Recap statistics? This cannot be undone.</string>
+    <string name="recap_clear_action">Clear</string>
+</resources>

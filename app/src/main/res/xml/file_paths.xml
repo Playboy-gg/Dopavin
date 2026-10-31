@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Lyrics cards are written here, then shared by content uri. -->
+    <cache-path name="cards" path="cards/" />
+    <!-- F-207: the downloaded update APK, handed to the system installer. -->
+    <cache-path name="updates" path="updates/" />
+</paths>

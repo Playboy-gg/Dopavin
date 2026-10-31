@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_provider_title">Lyrics provider</string>
+    <string name="lyrics_provider_choose">Choose (Recommended)</string>
+    <string name="lyrics_provider_choose_desc">Asks every provider at once and takes the first good match for the song.</string>
+    <string name="lyrics_provider_better">Better Lyrics</string>
+    <string name="lyrics_provider_better_desc">Word-by-word timed lyrics where the song has them.</string>
+    <string name="lyrics_provider_lrclib">LRCLIB</string>
+    <string name="lyrics_provider_lrclib_desc">Open community library of line-synced and plain lyrics.</string>
+    <string name="lyrics_kind_word">Word-synced</string>
+    <string name="lyrics_kind_line">Line-synced</string>
+    <string name="lyrics_kind_plain">Plain text</string>
+    <string name="lyrics_via">via %1$s · %2$s</string>
+    <string name="lyrics_source_title">Lyrics source</string>
+    <string name="cd_lyrics_source">Change lyrics source</string>
+    <string name="cd_lyrics_sync">Adjust lyrics timing</string>
+    <string name="lyrics_sync_title">Lyrics timing</string>
+    <string name="lyrics_sync_hint">Applies to this song only. Earlier shows each line sooner.</string>
+    <string name="lyrics_sync_earlier">Earlier</string>
+    <string name="lyrics_sync_later">Later</string>
+    <string name="lyrics_sync_reset">Reset</string>
+    <string name="lyrics_sync_value">%1$s s</string>
+    <string name="lyrics_err_timeout">The lyrics sources took too long to answer.</string>
+    <string name="lyrics_done">Done</string>
+    <string name="cd_lyrics_card">Share lyrics card</string>
+    <string name="lyrics_card_title">Lyrics card</string>
+    <string name="lyrics_card_hint">Pick up to %1$d lines.</string>
+    <string name="lyrics_card_share">Share</string>
+    <string name="lyrics_card_failed">Could not create the card.</string>
+    <string name="lyrics_card_dark">Dark</string>
+    <string name="lyrics_card_light">Light</string>
+    <string name="lyrics_card_accent">Colour</string>
+    <string name="lyrics_none_body_all">None of the lyrics sources has this song yet.</string>
+    <string name="lyrics_credit">Lyrics come from the provider shown above.</string>
+    <string name="lyrics_off_body_all">Turning this on sends the song title, artist, album and length to the lyrics providers you allow. Lyrics are saved on your phone afterwards.</string>
+</resources>

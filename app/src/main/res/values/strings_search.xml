@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_filter_all">All</string>
+    <string name="search_did_you_mean">Did you mean</string>
+    <string name="search_did_you_mean_cd">Did you mean %1$s? Search for it instead</string>
+    <string name="search_filter_albums">Albums</string>
+    <string name="search_recent">Recent searches</string>
+    <string name="search_recent_clear">Clear all</string>
+    <string name="search_recent_remove">Remove %1$s from recent searches</string>
+    <string name="search_empty_suggest_body">Nothing in your library matches. Try the suggestion above.</string>
+    <string name="search_top_result">Top result</string>
+    <string name="search_type_artist">Artist</string>
+    <string name="search_type_album">Album</string>
+    <string name="search_type_song">Song</string>
+    <string name="search_show_all">Show all %1$d songs</string>
+    <string name="search_tile_recent">Newest in your library</string>
+    <string name="search_remove_cd">Remove</string>
+    <plurals name="artists_count">
+        <item quantity="one">%d artist</item>
+        <item quantity="other">%d artists</item>
+    </plurals>
+</resources>

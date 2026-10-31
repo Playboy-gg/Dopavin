@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sub_added">Subscribed to %1$s</string>
+    <string name="sub_removed">Unsubscribed from %1$s</string>
+    <string name="subs_title">Subscriptions</string>
+    <string name="subs_empty_title">No subscriptions yet</string>
+    <string name="subs_empty_body">Play a YouTube song, open More on the player and tap Subscribe. New uploads from your artists show up here and on Home.</string>
+    <string name="subs_channels">Channels</string>
+    <string name="subs_latest">Latest uploads</string>
+    <string name="subs_loading">Checking for new uploads…</string>
+    <string name="subs_no_uploads">No uploads could be loaded. Pull down to try again.</string>
+    <string name="subs_unsubscribe">Unsubscribe</string>
+    <string name="subs_manage">Manage</string>
+    <string name="more_subscribe">Subscribe to %1$s</string>
+    <string name="more_unsubscribe">Unsubscribe from %1$s</string>
+    <string name="home_subscriptions">From your subscriptions</string>
+    <string name="home_subs_tip_title">Follow your artists</string>
+    <string name="home_subs_tip_body">Subscribe from the player\'s More menu to see new uploads here.</string>
+    <string name="cd_channel">%1$s, channel</string>
+    <string name="cd_feed_card">%1$s by %2$s, %3$s</string>
+    <string name="menu_go_artist">Go to artist</string>
+    <string name="home_top_artists">Your top artists</string>
+    <string name="cd_open_artist">Open artist %1$s</string>
+</resources>

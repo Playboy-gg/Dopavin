@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lib_spotify_import">Import from Spotify</string>
+    <string name="spotify_import_title">Import from Spotify</string>
+    <string name="spotify_import_body">Paste a link to a public Spotify playlist or album. Each song is looked up on YouTube Music and the result is saved as a playlist. No Spotify account is needed.</string>
+    <string name="spotify_import_hint">Spotify link</string>
+    <string name="spotify_import_start">Import</string>
+    <string name="spotify_import_bad_link">That is not a Spotify playlist or album link.</string>
+    <string name="spotify_import_reading">Reading the Spotify list…</string>
+    <string name="spotify_import_matching">Finding %1$d songs on YouTube Music…</string>
+    <string name="spotify_import_failed">Could not read that list. Is it public?</string>
+    <string name="spotify_import_none">No matching songs were found.</string>
+    <string name="spotify_import_done">“%1$s” saved: %2$d of %3$d songs found.</string>
+</resources>

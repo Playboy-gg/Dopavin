@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_ambience">App ambience</string>
+    <string name="settings_ambience_body">The whole app background glows with the colours of the song that is playing, spreading down from the top. Off keeps a plain background.</string>
+</resources>

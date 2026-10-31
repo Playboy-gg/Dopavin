@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_name">Dopavin Now Playing</string>
+    <string name="widget_description">Artwork, title and playback controls</string>
+    <string name="widget_idle">Nothing playing</string>
+    <string name="widget_idle_hint">Open Dopavin to pick a song</string>
+    <string name="widget_previous">Previous</string>
+    <string name="widget_play_pause">Play or pause</string>
+    <string name="widget_next">Next</string>
+</resources>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_grp_listening">YOUR LISTENING</string>
+    <string name="settings_grp_experience">YOUR EXPERIENCE</string>
+    <string name="settings_grp_app">PRIVACY &amp; APP</string>
+    <string name="cat_playback">Playback</string>
+    <string name="cat_audio">Audio &amp; Effects</string>
+    <string name="cat_downloads">Downloads</string>
+    <string name="cat_streaming">Streaming &amp; Lyrics</string>
+    <string name="cat_appearance">Appearance</string>
+    <string name="cat_glass">Glass &amp; Style</string>
+    <string name="cat_privacy">Privacy &amp; Data</string>
+    <string name="cat_updates">Updates</string>
+    <string name="settings_sum_updates">Check for a new version, download and install it</string>
+    <string name="cat_about">About Dopavin</string>
+    <string name="settings_search_clear">Clear search</string>
+    <string name="settings_restore_confirm">Restore</string>
+    <string name="about_logo_cd">Dopavin logo</string>
+    <string name="about_tagline">Music, your way.</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_view_source">View source code</string>
+    <string name="about_licences">Open-source licences</string>
+    <string name="about_privacy">Privacy &amp; Data</string>
+    <string name="about_made">Made for music.</string>
+    <string name="about_no_browser">No browser found to open the link.</string>
+    <string name="about_open_source">OPEN-SOURCE PROJECTS</string>
+    <string name="about_close">Close</string>
+    <!--
+        Owner's repository (given by the owner 2026-10-26; the page could not be opened from the build
+        sandbox, so the repository itself is not verified to exist yet). Empty = the button is hidden.
+    -->
+    <string name="about_source_url" translatable="false">https://github.com/playboy-gg/Dopavin</string>
+    <string name="about_profile_url" translatable="false">https://github.com/playboy-gg</string>
+</resources>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_library_hub">Library</string>
+    <string name="lib_title">Library</string>
+    <string name="title_downloads">Downloads</string>
+    <string name="lib_playlists">Playlists</string>
+    <string name="lib_subscriptions">Subscriptions</string>
+    <string name="lib_favorites">Favorite Songs</string>
+    <string name="lib_recent">Recently Played</string>
+    <string name="lib_downloads">Downloads</string>
+    <string name="lib_recap">Recap</string>
+    <string name="artist_subscribe">Subscribe</string>
+    <string name="artist_subscribed">Subscribed</string>
+    <string name="artist_songs">Songs</string>
+    <string name="artist_albums">Albums</string>
+    <string name="artist_play">Play</string>
+    <string name="artist_shuffle">Shuffle</string>
+    <string name="cd_artist_photo">%1$s photo</string>
+    <string name="cd_album_card">Album %1$s</string>
+    <string name="artist_load_failed">Could not load this artist. Check your connection.</string>
+    <string name="artist_more">More</string>
+</resources>

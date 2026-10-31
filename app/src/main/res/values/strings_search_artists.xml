@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_artist_channel_desc">%1$s, artist channel</string>
+</resources>

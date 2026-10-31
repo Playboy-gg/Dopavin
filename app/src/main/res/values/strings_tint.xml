@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tint">Tint</string>
+    <string name="settings_tint_body">Colour of buttons, icons, sliders and highlights.</string>
+    <string name="tint_default">Dopavin</string>
+    <string name="tint_dynamic">Dynamic (follows the song)</string>
+    <string name="tint_rose">Rose</string>
+    <string name="tint_orange">Orange</string>
+    <string name="tint_amber">Amber</string>
+    <string name="tint_green">Green</string>
+    <string name="tint_teal">Teal</string>
+    <string name="tint_blue">Blue</string>
+    <string name="tint_indigo">Indigo</string>
+    <string name="tint_purple">Purple</string>
+    <string name="about_profile">GitHub profile</string>
+</resources>

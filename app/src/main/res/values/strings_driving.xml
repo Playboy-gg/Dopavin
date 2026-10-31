@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="driving_title">Driving mode</string>
+    <string name="driving_body">Big, simple controls; the screen stays on.</string>
+    <string name="driving_exit">Exit driving mode</string>
+    <string name="driving_nothing">Nothing playing</string>
+</resources>

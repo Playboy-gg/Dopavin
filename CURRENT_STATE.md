@@ -1,0 +1,60 @@
+# CURRENT STATE (2026-10-23)
+
+- Latest batch (F-120 glass, F-121 extras): **liquid glass** (vendored Kyant0 Backdrop v2.0.0 + Capsule, Apache 2.0, licences in docs/licenses) on bottom nav (now a floating pill), mini player, sheets, icon buttons, chips, tonal buttons, switches, search field, Now Playing controls; new Settings page "Glass & style" (master switch, presets, blur, lens height/strength, tint, colour boost, rim light, shadow, render quality, rainbow edge, live preview). Also: download storage limit with auto-cleanup, downloaded badge on song rows, backup export/import (likes, playlists, settings), resume on headphone/Bluetooth reconnect. Also fixed a latent infinite recursion in `PlaylistCodec.encode/decode`.
+- Dependency change: Compose UI/foundation 1.6.8 -> **1.7.5**, Material3 1.2.1 -> **1.3.1** (Backdrop needs the GraphicsLayer API from 1.7). Kotlin 1.9.24 / compiler 1.5.14 unchanged.
+- Verified (actually run): kotlinc 1.9.24 parses every source file incl. vendored Backdrop/Capsule (no syntax errors); every `R.string.*`/`R.drawable.*` reference exists; every `MusicActions` function is implemented by the ViewModel.
+- NOT verified: any compile against real libraries (no Android SDK/Maven in sandbox), Compose 1.7.5 + Kotlin 1.9.24 compatibility, glass rendering/performance on a device (needs Android 12+; lens needs 13+), backup import/export, headphone resume (background `play()` may be restricted by Android 12+), cache trimming.
+- Also done (F-122): Kyant0 `LiquidBottomTabs` port (glass panel, draggable lens indicator; helper `DampedDragAnimation` rewritten, `InteractiveHighlight` omitted), nav/mini hidden while Now Playing is open, capsule mini player, landscape navigation rail (width >= 600 dp), pull-to-refresh on Home, tap haptics, Driving mode screen (Now Playing > More controls).
+- Also done (F-125, not compiled/run): bottom bar = the owner's FloatingTabBar with mini player as accessory (glass off: solid pill bar + floating mini player; landscape rail); ambience-off shows plain canvas (no red tint); Settings hub without cards, white icons. Expect compile errors in the newly vendored packages on the next build.
+- Also done (F-128, not compiled/run): no slider/seekbar thumbs, lyrics/queue replace the artwork on Now Playing, Equalizer button opens its screen, sleep timer is a glass dialog.
+- Also done (F-129..F-131, not compiled/run): local YouTube subscriptions + feed screen, big/small Home cards, word-by-word lyrics (Better Lyrics TTML) with a new lyrics panel. New file `values/strings_feed.xml`.
+- Also done (F-133/F-134, not compiled/run): artist profile screen with Subscribe + songs + albums, square artist photo, Library tab hub (Downloads moved inside). New file `values/strings_library.xml`.
+- Also done (F-135, not compiled/run): Lucide icon set everywhere, ripple removed from nav bar.
+- Also done (F-136, not compiled/run): artist photos on Home, all artist taps open the profile, 6-song preview + More, Settings without explanation texts.
+- Also done (F-137/F-138, not compiled/run): Settings hub + About redesign, artist screen glass. Needs `about_source_url` in values/strings_settings.xml.
+- Also done (F-139, not compiled/run): all dialogs are liquid glass.
+- Also done (F-141/F-142): lyrics provider race + settings + karaoke controls (39 JVM unit tests pass; app not built), Home-play artwork/like/download fix. New file values/strings_lyrics.xml.
+- Also done (F-143, not compiled): providers Portato, LyricsPlus, Unison, KuGou added (49 JVM tests pass; live endpoints untested). lrc.red/BiniLyrics NOT added (no verifiable API).
+- Also done (F-144, not compiled): Search redesign (chips, albums, Did you mean, recents) + folded tab bar icon fix. 56 JVM tests pass.
+- Also done (F-145): lyrics race - synced beats plain always, plain only as last resort (59 JVM tests pass, not built).
+- Also done (F-146, not compiled): Search landing + results visual redesign (top result card, tiles with counts, recent pills, skeletons). Build fix: ArtworkSize import (com.dopavin.data).
+- Also done (F-147, not compiled): Home redesign (compact header, search pill, quick access, Continue listening, glass mood chips). F-147 layout was replaced by the F-149 redesign (real logo, hero, shortcuts, poster cards, ranked trending).
+- Also done (F-148, not compiled): all "more" sheets are now anchored Kyant0 dropdowns (below the button, above when no room); Queue stays a sheet. Build fix: motion value read outside LaunchedEffect.
+- Also done (F-150, not compiled): artist photo now fades via alpha mask so it blends into the page without a seam.
+- Also done (F-151, not compiled): clean song titles + non-song videos hidden on artist pages (TrackNames, 8 JVM tests pass).
+- Also done (F-152, not compiled): channel/artist results in Search, genuine-channel artist pages, official uploaders ranked first (ArtistPick, 6 JVM tests; 73 total pass).
+- Also done (F-153, not compiled): estimated word karaoke for line-synced lyrics, frame-rate smooth sweep, synced lyrics in Driving mode (Karaoke.kt, 6 JVM tests; 79 total pass).
+- Also done (F-154, not compiled): karaoke sweep uses written units (Karaoke.units) so Hindi matras/conjuncts, Arabic, Thai, emoji are not broken; 12 Karaoke JVM tests, 84 total pass.
+- Also done (F-155, not compiled): Home "Radios" shelf (seed-song thumbnails) -> full YouTube mix list via NewPipe with Play / Shuffle / Save as playlist.
+- Also done (F-156, not compiled): playlist detail = big blended cover + name + Play/Shuffle (cover from YouTube when saved from a radio/album/playlist, else 2x2 collage); downloads fetch HD artwork first (ArtworkUrls, 6 JVM tests).
+- Also done (F-157/F-158, not compiled): smart lyrics fallback (LyricsQueryPlan, LyricsFallback, version-aware matcher) and song details dialog + MarqueeText; 119 JVM tests pass.
+- Also done (F-159/F-160, not compiled): queue artwork for online songs, iOS-style toast, search dedupe/version ranking, no wrong-artist fallback; 129 JVM tests pass.
+- Owner confirmed build OK up to F-160. F-172..F-175 (Retry on failed online screens, notification timing, Reduce Motion, font-safe heights) done, not compiled. F-168..F-171 (tint + dynamic tint, GitHub links, UI rules doc, iOS-style back) done, not compiled; 135 JVM tests pass. F-164..F-167 (renderer-crash fix, debug crash log, scrolling titles under back, predictive back) done, not compiled; owner log proved F-162 crashed natively. F-163 (crash report screen) done, not compiled. F-162 (real glass back/close buttons, scrolling settings titles) done, not compiled. F-161 (cover-page layout for radio/list screens, scrolling Downloads header, fixed glass back) done, not compiled. Next: paging (Load more) and album tab, after a successful Gradle build.
+- Not done yet (still open): 200 % font pass, glass on the seek bar/slider thumb and dialogs, mini-player progress polish.
+- Build status: first real build (MobileIDE, Gradle 8.14) got past the vendored glass code; 7 errors in new files were fixed, rebuild pending. Always replace the WHOLE project (incl. res/values/strings.xml), not single files.
+- Blocker: T07 - rebuild. Send the full error list; expect compile errors, most likely in the vendored glass code or from the Compose 1.7 bump.
+- Next actionable task: T07 build -> fix errors -> T08/T12/T13 device checklists.
+- F-177 (unbuilt): Now Playing predictive back + mini player landing spring + mini stretch toward swipe. Next: build F-161..F-177 and report; then paging/albums.
+- F-178 (unbuilt): player holds at 12 %, bars wait until it is gone, mini drop spring, back button slides instead of cross-fade, flash fix. Next: build F-161..F-178.
+- F-179 (unbuilt): motion tokens/maths/specs + 11 tests; blueprint saved as docs/13. Next: build F-161..F-179; blueprint phase 2 (mini-to-full player transition) only after device feedback.
+- F-180 (unbuilt): layered page host (flash fix), Now Playing sheet driven by one value, drag-up on mini player. Next: build F-161..F-180 and report build errors / feel; shared-element artwork morph only after that.
+- F-181 (unbuilt): search "Show more results" paging. Last known build: F-180 failed on one error (fixed in zip). Next: build; then onboarding tip, notification prompt on first download, colour-literal list.
+- F-182 (unbuilt): cover flight between mini player and Now Playing. Next: build F-161..F-182.
+- F-183 (unbuilt): cover flight rectangle recorded when the sheet settles at 0 (F-182 never had a player rectangle).
+- F-184 (unbuilt): cover flight rewritten (linear with sheet, trails the player, reverse on open, works on first open).
+- F-185 (unbuilt): cover rectangle recorded again at sheet==0 (F-183 way) with the F-184 linear flight.
+- F-186 (unbuilt): first-open cover flight via host-relative + settled rectangles with validation, Reduce Motion switch, logcat tag ArtworkFlight. Next: build; if no flight, send logcat filtered by ArtworkFlight.
+- F-187 (unbuilt): normal swipe-down inside Now Playing now drives the root sheet (cover flight follows the finger). Next: build F-161..F-187; verify flight (logcat tag ArtworkFlight).
+- F-188 (unbuilt): bars stay composed (no recreation), cover landing spring in the mini player.
+- F-189 (unbuilt): Settings category pages are routes, so back button and predictive back both go category -> hub -> previous. Next: build F-161..F-189.
+- F-190/F-191 (unbuilt): Share song, Recap (stats). Backlog B-03..B-22 in docs/01. Next: build F-161..F-191; then B-03 lyrics card, B-04 language picker.
+- F-192..F-194 (unbuilt): mobile-data stream quality, lyrics cache clear, lyrics card (new FileProvider + res/xml/file_paths.xml). Next: build F-161..F-194; then B-04 language picker, B-09, B-06.
+- F-195..F-199 (unbuilt): Download all, Add all to queue, haptics switch, share artist, Recap play top songs. Next: build F-161..F-199; remaining backlog B-04 language, B-05 widget, B-06 Spotify link import, B-07 full-screen artwork, B-09 save albums.
+- F-200..F-205 (unbuilt): collection More menu, Play on, widget, lyric strip, Spotify link import, autoplay freshness. Settings placement rule in docs/10 section 16. Next: build F-161..F-205.
+- F-206 (unbuilt): update check (GitHub releases), version bumped to 1.1 / code 2, CHANGELOG.md, RELEASE_NOTES_v1.1.md, docs/14_RELEASING.md. Next: build F-161..F-206; then release steps in docs/14.
+- F-207..F-210 (build 1 failed: UpdateDialog.kt is now an empty stub; maxWidth scope fixed) (unbuilt): Updates category + in-app download/install (version still 1.1 / 2), karaoke lyric strip with tap, marquee edge fades, glass More menu shows the player behind it. Next: build F-161..F-210; test a real update (docs/14); check the More menu look.
+- F-211 (unbuilt): widget restyled (glass card + cover ambience). Next: build, add widget, check look and buttons.
+- F-212 (unbuilt): no cover flight over lyrics/queue on back; held queue row enlarged on a glass rounded box. Next: build, test back from lyrics and a queue drag.
+- F-213 (unbuilt): smooth queue reorder (rows glide, drop settles). Next: build and test a queue drag; tune springs in QueueScreen.kt if needed.
+- F-214 (unbuilt): held queue row drawn above the list on glass that shows the passing songs; softer shift spring. Next: build and test a queue drag.
+- Crash fix F-206: ViewModel start-up NPE (properties declared after init). Next: build and confirm the app opens; then release steps in docs/14.
