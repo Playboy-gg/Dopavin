@@ -1,1 +1,48 @@
-keystore/
+# Gradle
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+*.hprof
+captures/
+.cxx/
+output-metadata.json
+release/
+app/release/
+
+# Signing and secrets — never commit these
+*.jks
+*.keystore
+*.p12
+*.pem
+keystore.properties
+signing.properties
+secrets.properties
+.env
+.env.*
+
+# IDE and on-device tooling
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+.phoneide/
+kls-classpath
+.kotlin/
+
+# Local archives, logs and temporary files
+*.zip
+*.log
+*.tmp
+*~
+
+# Crash dumps
+hs_err_pid*

@@ -1,0 +1,72 @@
+name: Feature request
+description: Suggest a feature, a design change or an improvement.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Dopavin has a focused scope. Please read the README and search the existing issues before requesting a feature. Not every idea will be accepted.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you request
+      options:
+        - label: I searched the existing issues and discussions.
+          required: true
+        - label: I read the README and this is not already listed.
+          required: true
+        - label: This is not a security problem (those go through SECURITY.md).
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Playback
+        - Discover and search
+        - Library and downloads
+        - Lyrics
+        - Interface and motion
+        - Accessibility
+        - Accounts and services
+        - Performance and battery
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation where you miss this feature. Avoid jumping straight to a solution.
+      placeholder: "When I ..., I cannot ..., so I have to ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+      description: Describe the behaviour, the screen and the states you expect.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have considered
+      description: Existing workarounds, other apps' approaches, or a smaller version of the idea.
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Mockups, references, links. Do not attach copyrighted artwork you cannot share.
+    validations:
+      required: false

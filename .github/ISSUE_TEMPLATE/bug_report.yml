@@ -1,0 +1,94 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much as you can — it makes the fix much faster.
+
+        Do **not** include ListenBrainz tokens, Subsonic passwords, YouTube cookies, server addresses or personal data in screenshots or logs.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you report
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: I am using the latest release, or a build from this repository's source.
+          required: true
+        - label: This is not a security problem (those go through SECURITY.md, not a public issue).
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Dopavin version
+      description: Shown in Settings > About, for example "1.1 (versionCode 2)".
+      placeholder: "1.1 (versionCode 2)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-source
+    attributes:
+      label: Where did you get the build?
+      options:
+        - GitHub Releases APK
+        - Built from source
+        - Other (explain below)
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: "Pixel 7, Android 14"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Be exact. Which screen, which song, what did you tap?
+      placeholder: |
+        1. Open ...
+        2. Tap ...
+        3. Wait for ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, screenshots or screen recording
+      description: Redact tokens, cookies, server addresses and personal data. Drag files here to attach them.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Does it happen every time? Did it start after an update? Does it happen offline?
+    validations:
+      required: false
