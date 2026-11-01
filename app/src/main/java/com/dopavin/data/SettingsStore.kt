@@ -47,6 +47,8 @@ data class AppSettings(
     val autoplay: Boolean = true,
     /** F-205: autoplay leaves out songs the user listened to recently. */
     val autoplayFresh: Boolean = true,
+    /** F-219: seconds the song fades out / the next fades in; 0 = off. */
+    val fadeSeconds: Int = 0,
     /** F-206: look for a newer GitHub release when the app opens (at most twice a day). */
     val autoUpdateCheck: Boolean = true,
     /** F-203: the current lyric line under the artist in Now Playing. */
@@ -110,6 +112,7 @@ class SettingsStore(context: Context) {
         onlinePlayback = prefs.getBoolean(KEY_ONLINE_PLAYBACK, true),
         autoplay = prefs.getBoolean(KEY_SMART_AUTOPLAY, true),
         autoplayFresh = prefs.getBoolean(KEY_AUTOPLAY_FRESH, true),
+        fadeSeconds = prefs.getInt("fade_seconds", 0).coerceIn(0, 12),
         autoUpdateCheck = prefs.getBoolean(KEY_AUTO_UPDATE, true),
         lyricStrip = prefs.getBoolean(KEY_LYRIC_STRIP, false),
         streamQuality = AudioQuality.values()
@@ -151,6 +154,7 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_ONLINE_PLAYBACK, settings.onlinePlayback)
             .putBoolean(KEY_SMART_AUTOPLAY, settings.autoplay)
             .putBoolean(KEY_AUTOPLAY_FRESH, settings.autoplayFresh)
+            .putInt("fade_seconds", settings.fadeSeconds)
             .putBoolean(KEY_AUTO_UPDATE, settings.autoUpdateCheck)
             .putBoolean(KEY_LYRIC_STRIP, settings.lyricStrip)
             .putInt(KEY_STREAM_QUALITY, settings.streamQuality.ordinal)

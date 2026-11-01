@@ -35,7 +35,9 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dopavin.R
-import com.dopavin.data.LibraryTab
+import com.dopavin.ui.components.GlassIconPill
+import com.dopavin.ui.glass.LocalGlassBackdrop
+import com.dopavin.ui.glass.LocalGlassStyle
 import com.dopavin.data.Song
 import com.dopavin.data.SortOrder
 import com.dopavin.data.Visible
@@ -83,23 +85,26 @@ fun LibraryScreen(
     playlists: List<Playlist>,
     downloads: DownloadsUi,
     actions: MusicActions,
+    /** The Favourites page: every liked song instead of the downloaded ones. */
+    favourites: List<Song> = emptyList(),
+    isFavourites: Boolean = false,
 ) {
     // The title, tabs and unfinished downloads are the first item of the list, so they scroll away;
     // only the glass back button stays where it is (same as the artist and playlist pages).
     val header: @Composable () -> Unit = {
         Column {
-            LibraryHeader(view, actions)
+            LibraryHeader(view, actions, isFavourites)
             ActiveDownloads(downloads.active, actions)
         }
     }
     Box(Modifier.fillMaxSize()) {
-        LibraryContent(view, visible, playback, liked, songsById, playlists, downloads, actions, header)
+        LibraryContent(view, visible, playback, liked, songsById, playlists, downloads, actions, header, favourites, isFavourites)
         FloatingBackButton(actions::back)
     }
 }
 
 @Composable
-private fun LibraryHeader(view: ViewState, actions: MusicActions) {
+private fun LibraryHeader(view: ViewState, actions: MusicActions, isFavourites: Boolean) {
     Column(Modifier.statusBarsPadding()) {
         // Room for the fixed glass back button; the title sits below it and scrolls with the page.
         Spacer(Modifier.height(Dimens.touchTarget + Dimens.sm))
@@ -110,46 +115,30 @@ private fun LibraryHeader(view: ViewState, actions: MusicActions) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AppText(
-                text = stringResource(R.string.title_downloads),
+                text = stringResource(if (isFavourites) R.string.lib_favorites else R.string.title_downloads),
                 style = AppTheme.type.display,
                 modifier = Modifier
                     .weight(1f)
                     .semantics { heading() },
             )
-            if (view.tab == LibraryTab.Songs) SortSheetButton(view.sort, actions::setSort)
-            IconAction(
-                icon = R.drawable.ic_queue,
-                description = stringResource(R.string.pl_title),
-                onClick = actions::openPlaylists,
-            )
+            // With glass: sort + playlists share one pill, settings has its own. Without glass: plain icons as before.
+            GlassIconPill {
+                SortSheetButton(view.sort, actions::setSort)
+                IconAction(
+                    icon = R.drawable.ic_queue,
+                    description = stringResource(R.string.pl_title),
+                    onClick = actions::openPlaylists,
+                )
+            }
+            Spacer(Modifier.width(Dimens.sm))
             IconAction(
                 icon = R.drawable.ic_settings,
                 description = stringResource(R.string.cd_settings),
                 onClick = actions::openSettings,
+                glass = true,
             )
         }
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Dimens.screenEdge, vertical = Dimens.md),
-            horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
-        ) {
-            SelectChip(
-                text = stringResource(R.string.tab_songs),
-                selected = view.tab == LibraryTab.Songs,
-                onClick = { actions.setTab(LibraryTab.Songs) },
-            )
-            SelectChip(
-                text = stringResource(R.string.tab_artists),
-                selected = view.tab == LibraryTab.Artists,
-                onClick = { actions.setTab(LibraryTab.Artists) },
-            )
-            SelectChip(
-                text = stringResource(R.string.tab_liked),
-                selected = view.tab == LibraryTab.Liked,
-                onClick = { actions.setTab(LibraryTab.Liked) },
-            )
-        }
+        Spacer(Modifier.height(Dimens.md))
     }
 }
 
@@ -280,7 +269,25 @@ private fun LibraryContent(
     downloads: DownloadsUi,
     actions: MusicActions,
     header: @Composable () -> Unit,
+    favourites: List<Song>,
+    isFavourites: Boolean,
 ) {
+    if (isFavourites) {
+        if (favourites.isEmpty()) {
+            Column(Modifier.fillMaxSize()) {
+                header()
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    EmptyState(
+                        title = stringResource(R.string.liked_empty_title),
+                        body = stringResource(R.string.liked_empty_body),
+                    )
+                }
+            }
+        } else {
+            SongList(favourites, view.sort, playback, liked, songsById, playlists, actions, header)
+        }
+        return
+    }
     if (visible.totalSongs == 0) {
         Column(Modifier.fillMaxSize()) {
             header()
@@ -298,30 +305,9 @@ private fun LibraryContent(
         }
         return
     }
-    when (view.tab) {
-        LibraryTab.Songs -> SongList(
-            visible.songs, view.sort, playback, liked, songsById, playlists, actions, header,
-        )
-        LibraryTab.Artists -> ArtistList(visible, actions, header)
-        LibraryTab.Liked -> {
-            val likedSongs = remember(visible.songs, liked) { visible.songs.filter { it.id in liked } }
-            if (likedSongs.isEmpty()) {
-                Column(Modifier.fillMaxSize()) {
-                    header()
-                    Box(Modifier.weight(1f).fillMaxWidth()) {
-                        EmptyState(
-                            title = stringResource(R.string.liked_empty_title),
-                            body = stringResource(R.string.liked_empty_body),
-                        )
-                    }
-                }
-            } else {
-                SongList(
-                    likedSongs, view.sort, playback, liked, songsById, playlists, actions, header,
-                )
-            }
-        }
-    }
+    SongList(
+        visible.songs, view.sort, playback, liked, songsById, playlists, actions, header,
+    )
 }
 
 // ---- Songs ----

@@ -45,7 +45,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.dopavin.R
-import com.dopavin.data.LibraryTab
 import com.dopavin.data.Song
 import com.dopavin.data.SortOrder
 import com.dopavin.data.Visible
@@ -214,15 +213,14 @@ private fun DidYouMean(suggestion: String, onClick: () -> Unit) {
 
 // ---------------------------------------------------------------- landing
 
-private class Tile(val label: Int, val count: String, val icon: Int, val tab: LibraryTab, val sort: SortOrder?)
+private class Tile(val label: Int, val count: String, val icon: Int, val liked: Boolean, val sort: SortOrder?)
 
 @Composable
 private fun Landing(visible: Visible, likedCount: Int, recents: List<String>, actions: MusicActions) {
     val tiles = listOf(
-        Tile(R.string.tab_songs, songCountText(visible.totalSongs), R.drawable.ic_music_note, LibraryTab.Songs, SortOrder.Title),
-        Tile(R.string.tab_artists, LocalContext.current.resources.getQuantityString(R.plurals.artists_count, visible.artists.size, visible.artists.size), R.drawable.ic_person, LibraryTab.Artists, null),
-        Tile(R.string.tab_liked, songCountText(likedCount), R.drawable.ic_favorite, LibraryTab.Liked, null),
-        Tile(R.string.sort_recent, stringResource(R.string.search_tile_recent), R.drawable.ic_queue, LibraryTab.Songs, SortOrder.Recent),
+        Tile(R.string.tab_songs, songCountText(visible.totalSongs), R.drawable.ic_music_note, false, SortOrder.Title),
+        Tile(R.string.tab_liked, songCountText(likedCount), R.drawable.ic_favorite, true, null),
+        Tile(R.string.sort_recent, stringResource(R.string.search_tile_recent), R.drawable.ic_queue, false, SortOrder.Recent),
     )
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -267,8 +265,7 @@ private fun Landing(visible: Visible, likedCount: Int, recents: List<String>, ac
                                 Modifier.weight(1f),
                             ) {
                                 tile.sort?.let(actions::setSort)
-                                actions.setTab(tile.tab)
-                                actions.setDestination(Destination.Library)
+                                if (tile.liked) actions.openFavourites() else actions.openDownloads()
                             }
                         }
                     }

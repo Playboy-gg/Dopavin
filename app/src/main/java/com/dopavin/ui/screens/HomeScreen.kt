@@ -69,6 +69,7 @@ import com.dopavin.ui.components.ArtworkImage
 import com.dopavin.ui.components.EmptyState
 import com.dopavin.ui.components.EqualizerBars
 import com.dopavin.ui.components.GradientButton
+import com.dopavin.ui.components.GlassIconPill
 import com.dopavin.ui.components.IconAction
 import com.dopavin.ui.RADIO_QUERY_PREFIX
 import com.dopavin.ui.components.SectionHeader
@@ -967,20 +968,19 @@ private fun HomeHeader(subtitle: String, onSearch: () -> Unit, onSettings: () ->
             )
             AppText(text = subtitle, style = AppTheme.type.bodySmall, color = colors.textSecondary, maxLines = 1)
         }
-        IconAction(
-            icon = R.drawable.ic_search,
-            description = stringResource(R.string.cd_search),
-            onClick = onSearch,
-            glass = true,
-            container = colors.surfaceRaised,
-        )
-        IconAction(
-            icon = R.drawable.ic_settings,
-            description = stringResource(R.string.cd_settings),
-            onClick = onSettings,
-            glass = true,
-            container = colors.surfaceRaised,
-        )
+        // Search and settings share one pill (glass, or a solid pill when glass is off).
+        GlassIconPill(fallback = colors.surfaceRaised) {
+            IconAction(
+                icon = R.drawable.ic_search,
+                description = stringResource(R.string.cd_search),
+                onClick = onSearch,
+            )
+            IconAction(
+                icon = R.drawable.ic_settings,
+                description = stringResource(R.string.cd_settings),
+                onClick = onSettings,
+            )
+        }
     }
 }
 
@@ -992,14 +992,12 @@ private fun ShortcutRow(likedCount: Int, hasDownloads: Boolean, actions: MusicAc
     val colors = AppTheme.colors
     val shortcuts = buildList {
         add(
-            Shortcut(R.string.tab_liked, R.drawable.ic_favorite) {
-                actions.setTab(com.dopavin.data.LibraryTab.Liked)
-                actions.setDestination(Destination.Library)
-            },
+            Shortcut(R.string.tab_liked, R.drawable.ic_favorite, actions::openFavourites),
         )
+        add(Shortcut(R.string.personal_mix_title, R.drawable.ic_shuffle, actions::openPersonalMix))
         add(Shortcut(R.string.lib_playlists, R.drawable.ic_queue, actions::openPlaylists))
         if (hasDownloads) {
-            add(Shortcut(R.string.lib_downloads, R.drawable.ic_download) { actions.openDownloads(com.dopavin.data.LibraryTab.Songs) })
+            add(Shortcut(R.string.lib_downloads, R.drawable.ic_download, actions::openDownloads))
         }
         add(Shortcut(R.string.home_history, R.drawable.ic_history, actions::openHistory))
         add(Shortcut(R.string.lib_subscriptions, R.drawable.ic_person, actions::openSubscriptions))

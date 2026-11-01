@@ -2,8 +2,6 @@ package com.dopavin.data
 
 import android.net.Uri
 
-enum class LibraryTab { Songs, Artists, Liked }
-
 enum class SortOrder { Title, Artist, Recent }
 
 /**

@@ -219,9 +219,31 @@ class PlayerConnection(context: Context) {
     fun play(songs: List<Song>, startIndex: Int, shuffle: Boolean?) = withController { c ->
         errorStreak = 0
         if (shuffle != null) c.shuffleModeEnabled = shuffle
-        c.setMediaItems(songs.map { it.toMediaItem() }, startIndex, 0L)
+        // Shuffle is a real reorder (the service plays strictly in list order), so the queue screen
+        // always shows exactly what plays next.
+        if (c.shuffleModeEnabled && songs.size > 1) {
+            val start = songs[startIndex.coerceIn(0, songs.lastIndex)]
+            val rest = songs.filterIndexed { i, _ -> i != startIndex.coerceIn(0, songs.lastIndex) }.shuffled()
+            unshuffled = songs.map { it.id.toString() }
+            c.setMediaItems((listOf(start) + rest).map { it.toMediaItem() }, 0, 0L)
+        } else {
+            unshuffled = emptyList()
+            c.setMediaItems(songs.map { it.toMediaItem() }, startIndex, 0L)
+        }
         c.prepare()
         c.play()
+    }
+
+    /** Queue order before shuffling (media ids), used to put the upcoming songs back when shuffle goes off. */
+    private var unshuffled: List<String> = emptyList()
+
+    /** Re-orders only what comes after the playing song; the playing song and its position stay untouched. */
+    private fun reorderUpcoming(c: MediaController, order: (List<MediaItem>) -> List<MediaItem>) {
+        val from = c.currentMediaItemIndex + 1
+        val count = c.mediaItemCount
+        if (c.currentMediaItemIndex < 0 || from >= count - 1) return
+        val upcoming = (from until count).map { c.getMediaItemAt(it) }
+        c.replaceMediaItems(from, count, order(upcoming))
     }
 
     fun playNext(song: Song) = withController { c ->
@@ -325,7 +347,19 @@ class PlayerConnection(context: Context) {
 
     fun seekTo(positionMs: Long) = withController { it.seekTo(positionMs) }
 
-    fun toggleShuffle() = withController { it.shuffleModeEnabled = !it.shuffleModeEnabled }
+    fun toggleShuffle() = withController { c ->
+        val on = !c.shuffleModeEnabled
+        c.shuffleModeEnabled = on
+        if (on) {
+            unshuffled = (0 until c.mediaItemCount).map { c.getMediaItemAt(it).mediaId }
+            reorderUpcoming(c) { it.shuffled() }
+        } else {
+            val position = HashMap<String, Int>()
+            unshuffled.forEachIndexed { i, id -> position.putIfAbsent(id, i) }
+            reorderUpcoming(c) { list -> list.sortedBy { position[it.mediaId] ?: Int.MAX_VALUE } }
+            unshuffled = emptyList()
+        }
+    }
 
     fun cycleRepeat() = withController {
         it.repeatMode = when (it.repeatMode) {

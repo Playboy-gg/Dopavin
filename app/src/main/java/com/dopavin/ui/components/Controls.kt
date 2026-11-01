@@ -263,6 +263,23 @@ fun IconAction(
 }
 
 /**
+ * One glass pill holding several header icons (liquid glass; [fallback] colour when glass is off,
+ * transparent = no pill at all). Place [IconAction]s with `glass = false` inside.
+ */
+@Composable
+fun GlassIconPill(
+    modifier: Modifier = Modifier,
+    fallback: Color = Color.Transparent,
+    content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit,
+) {
+    androidx.compose.foundation.layout.Row(
+        modifier = modifier.glassSurface(CircleShape, fallback = fallback),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
+}
+
+/**
  * Shuffle / repeat style toggle. The active state is the accent colour AND a dot under the glyph,
  * plus the spoken description, so it never relies on colour alone.
  */

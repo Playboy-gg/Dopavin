@@ -9,10 +9,10 @@ import com.dopavin.data.Groups
 import com.dopavin.data.HistoryStore
 import com.dopavin.data.effectiveStreamQuality
 import com.dopavin.data.SearchAssist
+import com.dopavin.data.SmartQueue
 import com.dopavin.data.SearchHistoryStore
 import com.dopavin.data.HomeCache
 import com.dopavin.data.HomeSnapshot
-import com.dopavin.data.LibraryTab
 import com.dopavin.data.LyricsOffsetStore
 import com.dopavin.data.LyricsProviders
 import com.dopavin.data.LyricsRepository
@@ -27,12 +27,9 @@ import com.dopavin.data.DownloadStore
 import com.dopavin.data.OnlineRepository
 import com.dopavin.data.PlaybackStore
 import com.dopavin.data.QueueOrigin
-import com.dopavin.data.Candidate
 import com.dopavin.data.ReasonCode
-import com.dopavin.data.RecFeatures
 import com.dopavin.data.TasteStore
-import com.dopavin.data.planBatch
-import com.dopavin.data.score
+import com.dopavin.data.AffinityMath
 import androidx.media3.common.Player
 import com.dopavin.data.SettingsStore
 import com.dopavin.data.Subscription
@@ -99,6 +96,10 @@ private const val AUTOPLAY_THRESHOLD = 2
 private const val AUTOPLAY_BATCH = 8
 private const val MOOD_BATCH = 20
 private const val RADIO_BATCH = 20
+private const val PERSONAL_MIX_BATCH = 30
+
+/** Mood retrieval is a search, not an audio measurement: its score never goes above this. */
+private const val MOOD_RETRIEVAL_CAP = 0.6
 private const val AUTOPLAY_COOLDOWN_MS = 25_000L
 private const val SAMPLE_PERIOD_MS = 4_000L
 private const val DAY_MS = 86_400_000.0
@@ -119,6 +120,9 @@ private const val SUBS_FEED_MAX = 60
 /** Marks an online-list query as "uploads of this channel url" instead of a search phrase. */
 const val CHANNEL_QUERY_PREFIX = "ch:"
 const val PLAYLIST_QUERY_PREFIX = "pl:"
+
+/** F-220: online lists of the owner's Subsonic server: "sub:random", "sub:starred", "sub:s:<search text>". */
+const val SUBSONIC_QUERY_PREFIX = "sub:"
 /** Opens YouTube's radio (mix) of one video id, see [OnlineRepository.radio]. */
 const val RADIO_QUERY_PREFIX = "radio:"
 const val HISTORY_QUERY = "hist:"
@@ -129,6 +133,9 @@ private const val PREFETCH_COUNT = 2
 
 /** F-204: most songs taken from one Spotify list, so a huge playlist cannot run for minutes. */
 private const val SPOTIFY_IMPORT_MAX = 100
+
+/** F-221: most library playlists copied in one import. */
+private const val YT_IMPORT_MAX_PLAYLISTS = 20
 
 /** F-206: automatic update checks run at most this often. */
 private const val UPDATE_CHECK_INTERVAL_MS = 12L * 60 * 60 * 1000
@@ -148,6 +155,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
     val update: StateFlow<com.dopavin.data.UpdateUi> = _update.asStateFlow()
     private var updateJob: Job? = null
     private var updateDownloadJob: Job? = null
+    // F-217: accounts (ListenBrainz, Subsonic, YouTube). Above `init` like the update state, same reason.
+    private val accountStore = com.dopavin.data.AccountStore(application)
+    private val _accounts = MutableStateFlow(accountStore.snapshot())
+    val accounts: StateFlow<com.dopavin.data.AccountsUi> = _accounts.asStateFlow()
+    private var accountJob: Job? = null
     private var spotifyJob: Job? = null
     private val _recap = MutableStateFlow(emptyList<com.dopavin.data.ListenEntry>())
     val recap: StateFlow<List<com.dopavin.data.ListenEntry>> = _recap.asStateFlow()
@@ -206,6 +218,18 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, Visible())
+
+    /** Every liked song, downloaded or only played online, in the chosen sort order. */
+    val favourites: StateFlow<List<Song>> = combine(
+        _songs,
+        _liked,
+        _view.map { it.sort }.distinctUntilChanged(),
+    ) { songs, liked, sort ->
+        val pool = (songs + onlineRepository.cachedSongs()).distinctBy { it.id }
+        sortSongs(pool.filter { it.id in liked }, sort)
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Search results for the current query (empty lists while the query is blank). */
     val results: StateFlow<Visible> = combine(
@@ -602,6 +626,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
                 _suggestions.value = SuggestionsUi(stage = OnlineStage.Loading, origin = QueueOrigin.MOOD_QUEUE)
                 loadMood(r.mood)
             }
+            Route.PersonalMix -> {
+                _suggestions.value = SuggestionsUi(stage = OnlineStage.Loading, origin = QueueOrigin.PERSONAL_MIX)
+                loadPersonalMix()
+            }
             is Route.SongRadio -> lastRadioSeed?.let {
                 _suggestions.value = SuggestionsUi(stage = OnlineStage.Loading, origin = QueueOrigin.SONG_RADIO)
                 loadRadio(it)
@@ -819,6 +847,13 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
                 listing.songs
             } else if (query == HISTORY_QUERY) {
                 withContext(Dispatchers.Default) { historyStore.recent(HISTORY_LIST_ITEMS) }
+            } else if (query.startsWith(SUBSONIC_QUERY_PREFIX)) {
+                withContext(Dispatchers.IO) { subsonicSongs(query.removePrefix(SUBSONIC_QUERY_PREFIX)) }
+            } else if (query == com.dopavin.data.YouTubeAccount.LIKED_QUERY) {
+                withContext(Dispatchers.IO) {
+                    com.dopavin.data.YouTubeAccount.likedSongs(accountStore.youTubeCookie).orEmpty().map { ytSong(it) }
+                        .also { onlineRepository.remember(it) }
+                }
             } else {
                 safeOnline { onlineRepository.search(query, 25) }
             }
@@ -911,9 +946,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
-    override fun openDownloads(tab: LibraryTab) {
-        setTab(tab)
+    override fun openDownloads() {
         _view.update { it.copy(stack = it.stack + Route.Downloads) }
+    }
+
+    override fun openFavourites() {
+        _view.update { it.copy(stack = it.stack + Route.Favourites) }
     }
 
     override fun openHistory() {
@@ -1003,30 +1041,51 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
 
     // ---- Music Core: scorer feature assembly + Smart Autoplay + S-11 generation ----
 
-    /** Features for one song from the stores (§7.4). Absent data stays null — never zero. */
-    private fun featuresOf(song: Song, ctx: ScoringContext): RecFeatures {
+    /**
+     * The one way every generator (autoplay, mood, radio, personal mix) turns a song into a pipeline
+     * candidate. Missing data stays null: an unknown song gets no taste, no novelty reward.
+     */
+    private fun cand(
+        song: Song,
+        ctx: ScoringContext,
+        related: Int? = null,
+        earlier: Int? = null,
+        newest: Int? = null,
+        mood: Double? = null,
+    ): SmartQueue.Cand<Song> {
         val t = tasteStore.taste(song)
-        val like = song.id in ctx.likedIds
-        return RecFeatures(
-            moodMatch = null,
-            taste = ((t.completes * 2.0 + t.plays * 0.3 - t.skips * 0.8) / 8.0 +
-                (if (like) 0.8 else 0.0)).coerceIn(0.0, 1.0),
-            artistAffinity = if (song.artist.trim().lowercase() in ctx.topArtists) 0.9 else null,
-            session = null,
-            novelty = (min((ctx.now - t.lastAt) / DAY_MS, 14.0) / 14.0).coerceIn(0.0, 1.0),
+        val artist = song.artist.trim().lowercase()
+        val liked = song.id in ctx.likedIds
+        return SmartQueue.Cand(
+            item = song, title = song.title, artist = song.artist, durationMs = song.durationMs,
+            relatedRank = related, earlierRank = earlier, newestRank = newest,
+            sameArtist = ctx.currentArtist.isNotEmpty() && artist == ctx.currentArtist,
+            moodMatch = mood,
+            taste = AffinityMath.taste(t.plays, t.completes, t.skips, t.lastAt, liked, ctx.now),
+            favouriteArtist = artist in ctx.topArtists,
+            rediscovery = AffinityMath.rediscovery(t.completes, t.skips, t.lastAt, ctx.now),
+            heardRecently = (song.videoId ?: "l${song.id}") in ctx.recentlyHeard,
+            blocked = t.blocked,
         )
     }
 
-    /** Context every generation needs: taste ranking, likes, and the ids already queued. */
+    /** Context every generation needs: taste, likes, what is queued and what was heard lately. */
     private fun scoringContext(): ScoringContext {
         val now = System.currentTimeMillis()
         val state = connection.state.value
+        val listens = listenLog.all()
+        val top = if (listens.isNotEmpty()) {
+            AffinityMath.topArtists(listens.map { it.artist to it.at }, now, 5)
+        } else {
+            historyStore.topArtists(5).map { it.trim().lowercase() }
+        }
         return ScoringContext(
             now = now,
             likedIds = _liked.value,
-            topArtists = historyStore.topArtists(5).map { it.trim().lowercase() }.toSet(),
+            topArtists = top.toSet(),
             queuedIds = state.queue.mapNotNull { it.mediaId.toLongOrNull() }.toSet(),
             currentArtist = state.artist.trim().lowercase(),
+            recentlyHeard = if (_settings.value.autoplayFresh) listens.takeLast(AUTOPLAY_FRESH_WINDOW).mapTo(HashSet()) { it.key } else emptySet(),
         )
     }
 
@@ -1036,7 +1095,18 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
         val topArtists: Set<String>,
         val queuedIds: Set<Long>,
         val currentArtist: String,
+        val recentlyHeard: Set<String>,
     )
+
+    /** Rises whenever the queue is replaced: an autoplay batch built for the old queue is then dropped. */
+    private var queueEpoch = 0L
+
+    /** Rises with every mood / radio / mix request: an older, slower answer never overwrites a newer one. */
+    private var suggestionSeq = 0L
+
+    /** What is queued now, as the pipeline wants it (title, artist, length). */
+    private fun queuedKeys(): List<Triple<String, String, Long>> =
+        connection.state.value.queue.map { q -> Triple(q.title, q.artist, songOfMediaId(q.mediaId)?.durationMs ?: 0L) }
 
     /** Smart Autoplay (F-92, §8.2): append one batch near the queue's end; never reorders. */
     private fun observeAutoplay() {
@@ -1056,9 +1126,19 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
                     lastAutoplayAttemptAt = now
                     if (autoplayBusy) return@collect
                     autoplayBusy = true
+                    val epoch = queueEpoch
                     viewModelScope.launch {
                         try {
-                            val batch = buildAutoplayBatch()
+                            val built = buildAutoplayBatch()
+                            // Revalidate against the queue as it is NOW: a newer generation or a replaced queue
+                            // drops this result, and songs that arrived meanwhile are not added twice.
+                            val live = connection.state.value
+                            val queuedNow = live.queue.mapNotNull { it.mediaId.toLongOrNull() }.toSet()
+                            val batch = if (epoch == queueEpoch && _settings.value.autoplay && live.queue.isNotEmpty()) {
+                                built.filter { it.id !in queuedNow }
+                            } else {
+                                emptyList()
+                            }
                             if (batch.isNotEmpty()) {
                                 generationCounter++
                                 _origins.update {
@@ -1074,26 +1154,48 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
+    /** The song behind a queue row (library first, then the online metadata memory). */
+    private fun songOfMediaId(mediaId: String?): Song? {
+        val id = mediaId?.toLongOrNull() ?: return null
+        return _songs.value.firstOrNull { it.id == id } ?: onlineRepository.peek(id)
+    }
+
+    /**
+     * Autoplay batch built around what plays NOW (not the whole library): the platform's related
+     * list of the current and the two previous songs, the artist's newest uploads, and only those
+     * library songs that fit (same or favourite artist, liked). [SmartQueue] ranks and removes repeats.
+     */
     private suspend fun buildAutoplayBatch(): List<Song> = withContext(Dispatchers.IO) {
         val ctx = scoringContext()
-        // F-205: the last listens are not suggested again (the queue's own songs are excluded below anyway).
-        val recentlyHeard: Set<String> = if (_settings.value.autoplayFresh) {
-            listenLog.all().takeLast(AUTOPLAY_FRESH_WINDOW).mapTo(HashSet()) { it.key }
-        } else {
-            emptySet()
+        val state = connection.state.value
+        val current = songOfMediaId(state.mediaId)
+        val pool = ArrayList<SmartQueue.Cand<Song>>()
+        if (_settings.value.onlinePlayback) {
+            val seeds = ArrayList<Song>()
+            current?.takeIf { it.videoId != null }?.let { seeds += it }
+            for (back in 1..2) {
+                songOfMediaId(state.queue.getOrNull(state.currentIndex - back)?.mediaId)
+                    ?.takeIf { it.videoId != null && seeds.none { s -> s.id == it.id } }?.let { seeds += it }
+            }
+            if (seeds.isEmpty()) historyStore.lastOnlineSong()?.let { seeds += it }
+            seeds.forEachIndexed { i, seed ->
+                safeOnline { onlineRepository.related(seed.videoId!!, 14) }.forEachIndexed { rank, song ->
+                    pool += if (i == 0) cand(song, ctx, related = rank) else cand(song, ctx, earlier = rank)
+                }
+            }
+            val channel = current?.channelUrl
+            if (!channel.isNullOrBlank()) {
+                safeOnline { onlineRepository.channelUploads(channel, 8, current.artist) }
+                    .forEachIndexed { rank, song -> pool += cand(song, ctx, newest = rank) }
+            }
         }
-        val onlineTail = if (_settings.value.onlinePlayback) {
-            historyStore.lastOnlineSong()?.videoId
-                ?.let { videoId -> safeOnline { onlineRepository.related(videoId, 8) } }
-                .orEmpty()
-        } else {
-            emptyList()
+        // Library songs only when they fit the moment; with no network they are the whole pool.
+        val offline = pool.isEmpty()
+        for (song in _songs.value) {
+            val artist = song.artist.trim().lowercase()
+            if (offline || artist == ctx.currentArtist || artist in ctx.topArtists || song.id in ctx.likedIds) pool += cand(song, ctx)
         }
-        val candidates = (_songs.value + onlineTail)
-            .filterNot { tasteStore.taste(it).blocked }
-            .filterNot { (it.videoId ?: "l${it.id}") in recentlyHeard }
-            .map { song -> Candidate(song, score(featuresOf(song, ctx))) }
-        planBatch(candidates, excludeIds = ctx.queuedIds, size = AUTOPLAY_BATCH).map { it.song }
+        SmartQueue.pick(pool.filter { it.item.id !in ctx.queuedIds }, queuedKeys(), current?.title ?: state.title, AUTOPLAY_BATCH)
     }
 
     /** S-11 mood batch (§8.2 Mood Queue): retrieval by seed query biases the online side. */
@@ -1104,27 +1206,28 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     private fun loadMood(mood: Mood) {
+        val seq = ++suggestionSeq
         viewModelScope.launch(Dispatchers.IO) {
             val ctx = scoringContext()
-            val online = if (_settings.value.onlinePlayback) {
-                safeOnline { onlineRepository.search(mood.seedQueries.first(), 12) }
-            } else {
-                emptyList()
+            val pool = ArrayList<SmartQueue.Cand<Song>>()
+            if (_settings.value.onlinePlayback) {
+                // The mood signal is retrieval only (the search the mood stands for), so it is capped
+                // well below 1.0 and falls with the result rank: it is never "a perfect mood match".
+                mood.seedQueries.take(2).forEach { query ->
+                    safeOnline { onlineRepository.search(query, 12) }.forEachIndexed { rank, song ->
+                        pool += cand(song, ctx, mood = MOOD_RETRIEVAL_CAP / (1.0 + rank * 0.1))
+                    }
+                }
             }
-            val candidates = ArrayList<Candidate>(online.size + _songs.value.size)
-            for (song in online) {
-                // Truthful labelling (§7.4): the mood signal is retrieval, not measured audio.
-                candidates += Candidate(song, score(featuresOf(song, ctx).copy(moodMatch = 1.0)))
-            }
+            val offline = pool.isEmpty()
             for (song in _songs.value) {
-                if (tasteStore.taste(song).blocked) continue
-                candidates += Candidate(song, score(featuresOf(song, ctx)))
+                if (offline || song.artist.trim().lowercase() in ctx.topArtists || song.id in ctx.likedIds) pool += cand(song, ctx)
             }
-            publishMoodBatch(candidates, ctx.queuedIds)
+            publishSuggestions(seq, QueueOrigin.MOOD_QUEUE, SmartQueue.rank(pool.filter { it.item.id !in ctx.queuedIds }, queuedKeys(), "", MOOD_BATCH))
         }
     }
 
-    /** S-11 Song Radio (§8.2): the seed's artist and related tracks. */
+    /** S-11 Song Radio (§8.2): the seed's related tracks keep their retrieval rank; the seed's artist helps. */
     override fun openRadio(song: Song) {
         _suggestions.value = SuggestionsUi(stage = OnlineStage.Loading, origin = QueueOrigin.SONG_RADIO)
         _view.update { it.copy(stack = it.stack + Route.SongRadio(song.videoId ?: "l${song.id}", song.title)) }
@@ -1135,44 +1238,62 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
     private var lastRadioSeed: Song? = null
 
     private fun loadRadio(seed: Song) {
+        val seq = ++suggestionSeq
         viewModelScope.launch(Dispatchers.IO) {
-            val ctx = scoringContext()
+            val ctx = scoringContext().let { it.copy(currentArtist = seed.artist.trim().lowercase()) }
+            val pool = ArrayList<SmartQueue.Cand<Song>>()
             val online = when {
-                seed.videoId != null -> safeOnline { onlineRepository.related(seed.videoId!!, 10) }
-                _settings.value.onlinePlayback -> {
-                    safeOnline { onlineRepository.search("${seed.artist} ${seed.title}".trim(), 10) }
-                }
+                seed.videoId != null -> safeOnline { onlineRepository.related(seed.videoId!!, 14) }
+                _settings.value.onlinePlayback -> safeOnline { onlineRepository.search("${seed.artist} ${seed.title}".trim(), 12) }
                 else -> emptyList()
             }
-            val candidates = ArrayList<Candidate>()
-            for (track in online) {
-                candidates += Candidate(track, score(featuresOf(track, ctx)))
-            }
-            for (track in _songs.value) {
-                val sameArtist = track.artist.trim().equals(seed.artist.trim(), ignoreCase = true)
-                if (tasteStore.taste(track).blocked) continue
-                if (!sameArtist) continue
-                candidates += Candidate(track, score(featuresOf(track, ctx).copy(session = 0.9)))
-            }
-            publishRadioBatch(candidates, ctx.queuedIds + seed.id)
+            online.forEachIndexed { rank, track -> pool += cand(track, ctx, related = rank) }
+            val sameArtistLocal = _songs.value.filter { it.artist.trim().equals(seed.artist.trim(), ignoreCase = true) }
+            sameArtistLocal.forEach { pool += cand(it, ctx) }
+            publishSuggestions(seq, QueueOrigin.SONG_RADIO, SmartQueue.rank(pool.filter { it.item.id != seed.id && it.item.id !in ctx.queuedIds }, queuedKeys(), seed.title, RADIO_BATCH, maxArtistRun = 3))
         }
     }
 
-    private fun publishMoodBatch(candidates: List<Candidate>, queuedIds: Set<Long>) {
-        val batch = planBatch(candidates, queuedIds, MOOD_BATCH)
-        _suggestions.value = if (batch.isEmpty()) {
-            SuggestionsUi(OnlineStage.Unreachable, QueueOrigin.MOOD_QUEUE)
-        } else {
-            SuggestionsUi(OnlineStage.Ready, QueueOrigin.MOOD_QUEUE, batch.map { SuggestedSong(it.song, it.reason) })
+    /** Personal Mix: long-term taste, recent listening, favourite artists, rediscovery and a little new music. */
+    override fun openPersonalMix() {
+        _suggestions.value = SuggestionsUi(stage = OnlineStage.Loading, origin = QueueOrigin.PERSONAL_MIX)
+        _view.update { it.copy(stack = it.stack + Route.PersonalMix) }
+        loadPersonalMix()
+    }
+
+    private fun loadPersonalMix() {
+        val seq = ++suggestionSeq
+        viewModelScope.launch(Dispatchers.IO) {
+            val ctx = scoringContext().copy(currentArtist = "")
+            val pool = ArrayList<SmartQueue.Cand<Song>>()
+            // 1. What the user already likes: liked songs (library + remembered online) and the newest history.
+            val known = (_songs.value + onlineRepository.cachedSongs() + historyStore.recent(40)).distinctBy { it.id }
+            for (song in known) {
+                val t = tasteStore.taste(song)
+                if (song.id in ctx.likedIds || t.completes > 0 || song.artist.trim().lowercase() in ctx.topArtists) pool += cand(song, ctx)
+            }
+            // 2. A little new music near the most-listened songs (related lists keep their rank).
+            if (_settings.value.onlinePlayback) {
+                val seeds = listenLog.all().filter { it.videoId != null }
+                    .groupingBy { it.key }.eachCount().entries.sortedByDescending { it.value }.take(3)
+                    .mapNotNull { e -> listenLog.all().lastOrNull { it.key == e.key }?.toSong() }
+                seeds.forEach { seed ->
+                    safeOnline { onlineRepository.related(seed.videoId!!, 10) }.forEachIndexed { rank, song ->
+                        pool += cand(song, ctx, earlier = rank)
+                    }
+                }
+            }
+            publishSuggestions(seq, QueueOrigin.PERSONAL_MIX, SmartQueue.rank(pool.filter { it.item.id !in ctx.queuedIds }, queuedKeys(), "", PERSONAL_MIX_BATCH))
         }
     }
 
-    private fun publishRadioBatch(candidates: List<Candidate>, queuedIds: Set<Long>) {
-        val batch = planBatch(candidates, queuedIds, RADIO_BATCH, maxArtistRun = 3)
+    /** Publishes a result only when it is still the newest generation (a slower, older one is dropped). */
+    private fun publishSuggestions(seq: Long, origin: QueueOrigin, batch: List<SmartQueue.Ranked<Song>>) {
+        if (seq != suggestionSeq) return
         _suggestions.value = if (batch.isEmpty()) {
-            SuggestionsUi(OnlineStage.Unreachable, QueueOrigin.SONG_RADIO)
+            SuggestionsUi(OnlineStage.Unreachable, origin)
         } else {
-            SuggestionsUi(OnlineStage.Ready, QueueOrigin.SONG_RADIO, batch.map { SuggestedSong(it.song, it.reason) })
+            SuggestionsUi(OnlineStage.Ready, origin, batch.map { SuggestedSong(it.item, it.reason) })
         }
     }
 
@@ -1184,6 +1305,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
         generationCounter++
         _origins.value = songs.associate { it.id.toString() to origin }
         rememberOnline(songs)
+        queueEpoch++
         connection.play(songs, 0, null)
     }
 
@@ -1259,7 +1381,8 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
         if (name.isBlank()) return
         val uploader = song.channelUrl ?: onlineRepository.peek(song.id)?.channelUrl
         closePlayerScreens() // from Now Playing the page must not open underneath the player
-        if (!song.isOnline) {
+        // The channel NewPipe gave for this very song is the artist page; nothing is guessed by name.
+        if (!song.isOnline || !uploader.isNullOrBlank()) {
             openArtistProfile(name, uploader.orEmpty())
             return
         }
@@ -1319,7 +1442,6 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
     override fun setDestination(destination: Destination) =
         _view.update { it.copy(destination = destination, stack = listOf(Route.Root)) }
 
-    override fun setTab(tab: LibraryTab) = _view.update { it.copy(tab = tab) }
 
     override fun setSort(sort: SortOrder) = _view.update { it.copy(sort = sort) }
 
@@ -1336,6 +1458,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
         val (window, start) = windowAround(list, index)
         _origins.value = window.associate { it.id.toString() to QueueOrigin.MANUAL }
         rememberOnline(window)
+        queueEpoch++
         connection.play(window, start, null)
     }
 
@@ -1345,11 +1468,13 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
             val (window, start) = windowAround(songs, Random.nextInt(songs.size))
             _origins.value = window.associate { it.id.toString() to QueueOrigin.MANUAL }
             rememberOnline(window)
+            queueEpoch++
             connection.play(window, start, true)
         } else {
             val (window, start) = windowAround(songs, 0)
             _origins.value = window.associate { it.id.toString() to QueueOrigin.MANUAL }
             rememberOnline(window)
+            queueEpoch++
             connection.play(window, start, false)
         }
     }
@@ -1456,6 +1581,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
             _messages.tryEmit(UiMessage(R.string.msg_selected_added, listOf(songs.size)))
         } else {
             rememberOnline(songs)
+            queueEpoch++
             connection.play(songs, 0, null)
         }
     }
@@ -1561,6 +1687,162 @@ class MusicViewModel(application: Application) : AndroidViewModel(application), 
         )
     }
 
+
+    // ---- Accounts (F-217..F-221) ----
+
+    private fun publishAccounts(busy: Boolean = false) {
+        _accounts.value = accountStore.snapshot(busy)
+    }
+
+    override fun refreshAccounts() = publishAccounts(_accounts.value.busy)
+
+    override fun setScrobbling(enabled: Boolean) {
+        if (enabled && accountStore.listenBrainzToken.isBlank()) return
+        accountStore.scrobbling = enabled
+        publishAccounts()
+    }
+
+    /** Checks the token with ListenBrainz first; only a valid one is kept, and scrobbling turns on with it. */
+    override fun connectListenBrainz(token: String) {
+        val clean = token.trim()
+        if (clean.isEmpty() || accountJob?.isActive == true) return
+        publishAccounts(busy = true)
+        accountJob = viewModelScope.launch {
+            val check = withContext(Dispatchers.IO) { com.dopavin.data.ListenBrainz.validate(clean) }
+            when (check) {
+                is com.dopavin.data.ListenBrainz.Check.Valid -> {
+                    accountStore.listenBrainzToken = clean
+                    accountStore.listenBrainzUser = check.user
+                    accountStore.scrobbling = true
+                    _messages.tryEmit(UiMessage(R.string.acc_lb_connected, listOf(check.user)))
+                }
+                com.dopavin.data.ListenBrainz.Check.Invalid -> _messages.tryEmit(UiMessage(R.string.acc_lb_invalid))
+                com.dopavin.data.ListenBrainz.Check.Unreachable -> _messages.tryEmit(UiMessage(R.string.acc_unreachable))
+            }
+            publishAccounts()
+        }
+    }
+
+    override fun disconnectListenBrainz() {
+        accountStore.clearListenBrainz()
+        publishAccounts()
+    }
+
+    /** Stores the server, tests it with a ping, and forgets it again when the login does not work. */
+    override fun connectSubsonic(url: String, user: String, password: String) {
+        if (accountJob?.isActive == true) return
+        val server = com.dopavin.data.SubsonicServer(url, user.trim(), password)
+        if (com.dopavin.data.Subsonic.baseUrl(url).isEmpty() || server.user.isEmpty() || password.isEmpty()) return
+        publishAccounts(busy = true)
+        accountJob = viewModelScope.launch {
+            val reply = withContext(Dispatchers.IO) { com.dopavin.data.Subsonic.ping(server) }
+            when (reply) {
+                com.dopavin.data.Subsonic.Reply.Ok -> {
+                    accountStore.subsonicUrl = com.dopavin.data.Subsonic.baseUrl(url)
+                    accountStore.subsonicUser = server.user
+                    accountStore.subsonicPassword = password
+                    _messages.tryEmit(UiMessage(R.string.acc_sub_connected))
+                }
+                is com.dopavin.data.Subsonic.Reply.Failed ->
+                    _messages.tryEmit(UiMessage(R.string.acc_sub_failed, listOf(reply.message.ifBlank { "?" })))
+                com.dopavin.data.Subsonic.Reply.Unreachable -> _messages.tryEmit(UiMessage(R.string.acc_unreachable))
+            }
+            publishAccounts()
+        }
+    }
+
+    override fun disconnectSubsonic() {
+        accountStore.clearSubsonic()
+        publishAccounts()
+    }
+
+    /** [kind]: "random", "starred" or "s:<text>". Opens the normal online list screen. */
+    override fun openSubsonic(title: String, kind: String) {
+        if (!accountStore.subsonicConfigured) return
+        openOnlineList(title, SUBSONIC_QUERY_PREFIX + kind)
+    }
+
+    private fun subsonicSongs(kind: String): List<Song> {
+        val server = com.dopavin.data.SubsonicServer(accountStore.subsonicUrl, accountStore.subsonicUser, accountStore.subsonicPassword)
+        val tracks = when {
+            kind == "random" -> com.dopavin.data.Subsonic.random(server)
+            kind == "starred" -> com.dopavin.data.Subsonic.starred(server)
+            kind.startsWith("s:") -> com.dopavin.data.Subsonic.search(server, kind.removePrefix("s:"))
+            else -> emptyList()
+        }
+        return tracks.map { t ->
+            val videoId = com.dopavin.data.Subsonic.ID_PREFIX + t.id
+            Song(
+                id = com.dopavin.data.stableOnlineId(videoId),
+                title = t.title,
+                artist = t.artist,
+                album = t.album,
+                albumKey = com.dopavin.data.UNKNOWN_ALBUM_KEY,
+                durationMs = t.durationSec * 1000L,
+                dateAdded = 0L,
+                track = 0,
+                isOnline = true,
+                videoId = videoId,
+                thumbUri = t.coverArt?.let { android.net.Uri.parse(com.dopavin.data.Subsonic.coverUrl(server, it)) },
+            )
+        }.also { onlineRepository.remember(it) }
+    }
+
+    private fun ytSong(t: com.dopavin.data.YtTrack) = Song(
+        id = com.dopavin.data.stableOnlineId(t.videoId),
+        title = t.title,
+        artist = t.artist,
+        album = "",
+        albumKey = com.dopavin.data.UNKNOWN_ALBUM_KEY,
+        durationMs = t.durationSec * 1000L,
+        dateAdded = 0L,
+        track = 0,
+        isOnline = true,
+        videoId = t.videoId,
+        thumbUri = t.thumb?.let(android.net.Uri::parse),
+    )
+
+    override fun signOutYouTube() {
+        accountStore.signOutYouTube()
+        com.dopavin.YouTubeSignInActivity.clearWebSession()
+        publishAccounts()
+    }
+
+    override fun openYouTubeLikes() {
+        if (!accountStore.youTubeSignedIn) return
+        openOnlineList(appContext.getString(R.string.acc_yt_likes), com.dopavin.data.YouTubeAccount.LIKED_QUERY)
+    }
+
+    /** Copies the owner's YouTube Music library playlists into Dopavin playlists (names already taken are skipped). */
+    override fun importYouTubePlaylists() {
+        if (accountJob?.isActive == true || !accountStore.youTubeSignedIn) return
+        publishAccounts(busy = true)
+        _messages.tryEmit(UiMessage(R.string.acc_yt_importing))
+        accountJob = viewModelScope.launch {
+            val cookie = accountStore.youTubeCookie
+            var created = 0
+            val lists = withContext(Dispatchers.IO) { com.dopavin.data.YouTubeAccount.libraryPlaylists(cookie) }
+            if (lists == null) {
+                _messages.tryEmit(UiMessage(R.string.acc_yt_failed))
+            } else {
+                val existing = playlistStore.loadAll().map { it.name }.toSet()
+                for (list in lists.take(YT_IMPORT_MAX_PLAYLISTS)) {
+                    if (list.title in existing) continue
+                    val songs = withContext(Dispatchers.IO) {
+                        com.dopavin.data.YouTubeAccount.playlistSongs(cookie, list.browseId)?.map { ytSong(it) }.orEmpty()
+                    }
+                    if (songs.isEmpty()) continue
+                    onlineRepository.remember(songs)
+                    if (withContext(Dispatchers.IO) { playlistStore.create(list.title, songs, songs.first().thumbUri?.toString()) }) created++
+                }
+                refreshPlaylists()
+                _messages.tryEmit(UiMessage(R.string.acc_yt_imported, listOf(created)))
+            }
+            publishAccounts()
+        }
+    }
+
+    override fun setFadeSeconds(seconds: Int) = updateSettings { it.copy(fadeSeconds = seconds.coerceIn(0, 12)) }
 
     // ---- Updates (F-206) ----
 

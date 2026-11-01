@@ -213,7 +213,8 @@ fun QueuePanel(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .layerBackdrop(listBackdrop),
+                    // Only recorded while a row is held; otherwise the old recording is reused (no extra layer work when scrolling).
+                    .layerBackdrop(listBackdrop, frozen = { !showOverlay }),
             ) {
                 itemsIndexed(queue, key = { index, item -> "${item.mediaId}#$index" }) { index, item ->
                     val song = item.mediaId.toLongOrNull()?.let { songsById[it] }

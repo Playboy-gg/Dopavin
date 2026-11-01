@@ -2,7 +2,6 @@ package com.dopavin.ui
 
 import com.dopavin.data.ArtistPick
 import androidx.annotation.StringRes
-import com.dopavin.data.LibraryTab
 import com.dopavin.data.Song
 import com.dopavin.data.SortOrder
 import com.dopavin.data.ThemeMode
@@ -115,6 +114,9 @@ sealed interface Route {
     /** S-11: a generated mood batch (owner spec §8.2). */
     data class MoodQueue(val mood: com.dopavin.data.Mood) : Route
 
+    /** The generated Personal Mix. */
+    data object PersonalMix : Route
+
     /** S-11: a Song Radio around one seed song. */
     data class SongRadio(val seedKey: String, val title: String) : Route
 
@@ -141,10 +143,12 @@ sealed interface Route {
 
     /** The downloaded songs (the old Library tab), opened from the Library hub. */
     data object Downloads : Route
+
+    /** The liked songs; separate from [Downloads]. */
+    data object Favourites : Route
 }
 
 data class ViewState(
-    val tab: LibraryTab = LibraryTab.Songs,
     val sort: SortOrder = SortOrder.Title,
     val query: String = "",
     val destination: Destination = Destination.Home,
@@ -181,7 +185,12 @@ interface MusicActions {
     fun openArtistOf(song: Song)
     fun openArtistProfile(name: String, url: String)
     fun toggleChannelSubscription(url: String, name: String)
-    fun openDownloads(tab: LibraryTab)
+    fun openDownloads()
+
+    /** All liked songs (downloaded or not) on their own page. */
+    fun openFavourites()
+
+    fun openPersonalMix()
     fun openHistory()
     fun openNowPlaying()
     fun openQueue()
@@ -201,7 +210,6 @@ interface MusicActions {
 
     // Top-level destinations and library view
     fun setDestination(destination: Destination)
-    fun setTab(tab: LibraryTab)
     fun setSort(sort: SortOrder)
     fun setQuery(query: String)
     fun commitSearch(query: String)
@@ -218,6 +226,18 @@ interface MusicActions {
     fun setAutoplayFresh(enabled: Boolean)
     fun setAutoUpdateCheck(enabled: Boolean)
     fun checkForUpdates()
+    // Accounts (F-217..F-221)
+    fun refreshAccounts()
+    fun setScrobbling(enabled: Boolean)
+    fun connectListenBrainz(token: String)
+    fun disconnectListenBrainz()
+    fun connectSubsonic(url: String, user: String, password: String)
+    fun disconnectSubsonic()
+    fun openSubsonic(title: String, kind: String)
+    fun signOutYouTube()
+    fun openYouTubeLikes()
+    fun importYouTubePlaylists()
+    fun setFadeSeconds(seconds: Int)
     fun startUpdateDownload()
     fun cancelUpdateDownload()
     fun installUpdate()

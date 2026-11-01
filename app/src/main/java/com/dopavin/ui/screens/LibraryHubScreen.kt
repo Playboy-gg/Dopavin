@@ -25,7 +25,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.dp
 import com.dopavin.R
-import com.dopavin.data.LibraryTab
 import com.dopavin.ui.MusicActions
 import com.dopavin.ui.components.AppText
 import com.dopavin.ui.components.IconAction
@@ -74,9 +73,9 @@ fun LibraryHubScreen(actions: MusicActions) {
         ) {
             item { HubRow(R.drawable.ic_queue, R.string.lib_playlists, actions::openPlaylists) }
             item { HubRow(R.drawable.ic_person, R.string.lib_subscriptions, actions::openSubscriptions) }
-            item { HubRow(R.drawable.ic_favorite, R.string.lib_favorites) { actions.openDownloads(LibraryTab.Liked) } }
+            item { HubRow(R.drawable.ic_favorite, R.string.lib_favorites, actions::openFavourites) }
             item { HubRow(R.drawable.ic_library, R.string.lib_recent, actions::openHistory) }
-            item { HubRow(R.drawable.ic_download, R.string.lib_downloads) { actions.openDownloads(LibraryTab.Songs) } }
+            item { HubRow(R.drawable.ic_download, R.string.lib_downloads, actions::openDownloads) }
             item { HubRow(R.drawable.ic_audio_lines, R.string.lib_recap, actions::openRecap) }
             item { HubRow(R.drawable.ic_download, R.string.lib_spotify_import) { importDialog = true } }
         }

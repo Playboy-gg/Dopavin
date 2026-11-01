@@ -80,7 +80,29 @@ class OnlineRepository(context: Context) {
             "",
         )
         val info = SearchInfo.getInfo(service, handler)
-        val songs = rankSearchItems(info.relatedItems, query)
+        var items: List<org.schabi.newpipe.extractor.InfoItem> = info.relatedItems
+        // The "Songs" shelf only holds catalogued tracks: a release of the last days is usually
+        // there only as a video. The plain video search is added (official uploaders only, never
+        // twice the same title) so new songs are found too. Its failure never hides the songs.
+        try {
+            val videoHandler = service.getSearchQHFactory()
+                .fromQuery(query, listOf(YoutubeSearchQueryHandlerFactory.VIDEOS), "")
+            val videos = SearchInfo.getInfo(service, videoHandler).relatedItems
+            val have = items.filterIsInstance<StreamInfoItem>()
+                .map { LyricsMatcher.normalise(TrackNames.clean(it.name.orEmpty(), it.uploaderName.orEmpty())) }
+                .toHashSet()
+            val extra = videos.filterIsInstance<StreamInfoItem>().filter { v ->
+                ArtistPick.uploaderTier(v.uploaderName.orEmpty(), v.isUploaderVerified) == 0 &&
+                    TrackNames.looksLikeSong(v.name.orEmpty(), v.duration) &&
+                    LyricsMatcher.normalise(TrackNames.clean(v.name.orEmpty(), v.uploaderName.orEmpty())) !in have
+            }
+            items = items + extra
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // keep the songs
+        }
+        val songs = rankSearchItems(items, query)
         val next = info.nextPage
         SearchPage(songs, nextCursor(query, handler, next))
     }
@@ -198,7 +220,8 @@ class OnlineRepository(context: Context) {
         return Song(
             id = stableOnlineId(videoId),
             title = title,
-            artist = item.uploaderName.orEmpty(),
+            // The channel name exactly as NewPipe reports it (only the auto-generated " - Topic" tag is dropped).
+            artist = item.uploaderName.orEmpty().replace(Regex("""(?i)\s*-\s*topic$"""), "").trim(),
             album = "", // resolved differently per surface; the search screen supplies its own line
             albumKey = UNKNOWN_ALBUM_KEY,
             durationMs = seconds * 1000L,

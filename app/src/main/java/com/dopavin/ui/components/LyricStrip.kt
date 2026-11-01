@@ -49,8 +49,9 @@ fun LyricStrip(
     }
     val ready = lyrics.songId == song.id && lyrics.status == LyricsStatus.Found && lyrics.synced.isNotEmpty()
     if (!ready) return
-    // Every frame while playing, so the word highlight glides (same source as the full lyrics page).
-    val position = rememberFramePosition(playback.mediaId, playback.isPlaying, actions::position)
+    // 20 updates a second: smooth enough for one small line, and 3x cheaper than every frame (this strip sits
+    // on the player, which also draws the artwork, glass buttons and the seek bar).
+    val position = rememberPlaybackPosition(playback.mediaId, playback.isPlaying, actions::position, intervalMs = 50L)
     val lines = lyrics.synced
     val index by remember(lines, lyrics.offsetMs) {
         derivedStateOf { currentLineIndex(lines, position.longValue + lyrics.offsetMs + STRIP_LEAD_MS) }

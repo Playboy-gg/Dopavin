@@ -40,7 +40,7 @@
 
 ## Privacy
 
-- No account, no sign-in, no analytics, no advertising.
+- No account is needed and nothing is collected: no analytics, no advertising. Optional: you can connect ListenBrainz (scrobbling), your own Subsonic-compatible server, and sign in to YouTube Music to import your liked songs and playlists. Those credentials stay on the phone, are sent only to the service they belong to, and are never part of a backup file.
 - Subscriptions, history, likes, playlists and settings stay on the device.
 - Network access is used for YouTube Music search and streams, downloads, artwork and lyrics lookups. Lyrics requests send the track title, artist, album and duration.
 - The app does not request storage permissions. Downloads live in app-private storage; "Save to device" uses the system file picker.

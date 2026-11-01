@@ -75,6 +75,8 @@ object DownloadCenter {
     fun enqueue(context: Context, song: Song): Boolean {
         val app = context.applicationContext
         val videoId = song.videoId ?: return false
+        // Songs of the owner's own server are already theirs; the downloader only knows YouTube.
+        if (com.dopavin.data.Subsonic.isServerSong(videoId)) return false
         if (DownloadStore.get(app).isDownloaded(videoId)) return false
         synchronized(jobs) {
             val existing = _items.value.firstOrNull { it.videoId == videoId }

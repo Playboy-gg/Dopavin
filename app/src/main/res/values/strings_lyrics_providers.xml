@@ -8,4 +8,6 @@
     <string name="lyrics_provider_unison_desc">Community-voted synced lyrics</string>
     <string name="lyrics_provider_kugou">KuGou</string>
     <string name="lyrics_provider_kugou_desc">Line-synced lyrics</string>
+    <string name="lyrics_provider_lrcred">lrc.red / BiniLyrics</string>
+    <string name="lyrics_provider_lrcred_desc">Word-synced lyrics matched to the exact recording</string>
 </resources>

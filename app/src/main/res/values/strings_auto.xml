@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auto_recent">Recently played</string>
+    <string name="auto_liked">Favourites</string>
+    <string name="auto_playlists">Playlists</string>
+</resources>

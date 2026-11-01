@@ -61,11 +61,13 @@ object LyricsProviders {
     const val LYRICSPLUS = "lyricsplus"
     const val UNISON = "unison"
     const val KUGOU = "kugou"
+    const val LRCRED = "lrcred"
 
-    val all: List<String> = listOf(BETTER, PORTATO, LYRICSPLUS, UNISON, KUGOU, LRCLIB)
+    val all: List<String> = listOf(LRCRED, BETTER, PORTATO, LYRICSPLUS, UNISON, KUGOU, LRCLIB)
 
     fun capabilities(id: String): Set<LyricsKind> = when (id) {
         BETTER -> setOf(LyricsKind.WordSynced, LyricsKind.LineSynced)
+        LRCRED -> setOf(LyricsKind.WordSynced, LyricsKind.LineSynced)
         LRCLIB -> setOf(LyricsKind.LineSynced, LyricsKind.Plain)
         PORTATO -> setOf(LyricsKind.WordSynced, LyricsKind.LineSynced)
         LYRICSPLUS -> setOf(LyricsKind.WordSynced, LyricsKind.LineSynced)
@@ -75,7 +77,7 @@ object LyricsProviders {
     }
 
     /** Providers that answer nothing without an artist, so artist-less fallback queries skip them. */
-    fun needsArtist(id: String): Boolean = id == LYRICSPLUS || id == UNISON
+    fun needsArtist(id: String): Boolean = id == LYRICSPLUS || id == UNISON || id == LRCRED
 
     /** Stored selections that no longer exist fall back to the race. */
     fun normalise(selection: String?): String = if (selection != null && selection in all) selection else CHOOSE

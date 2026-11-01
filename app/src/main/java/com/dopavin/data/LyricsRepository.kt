@@ -42,6 +42,7 @@ sealed interface LyricsResult {
 class LyricsRepository(
     context: Context,
     private val providers: List<LyricsProvider> = listOf(
+        LrcRedProvider(UrlConnectionHttp()),
         BetterLyricsProvider(UrlConnectionHttp()),
         BetterLyricsProvider(
             UrlConnectionHttp(),

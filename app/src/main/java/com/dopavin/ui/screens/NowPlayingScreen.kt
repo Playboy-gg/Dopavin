@@ -229,7 +229,8 @@ fun NowPlayingScreen(
         // surface must never sample a layer that contains itself.
         val contentBackdrop = com.dopavin.ui.glass.backdrop.backdrops.rememberLayerBackdrop()
         val menuBackdrop = com.dopavin.ui.glass.backdrop.backdrops.rememberCombinedBackdrop(playerBackdrop, contentBackdrop)
-        Box(Modifier.fillMaxSize().layerBackdrop(contentBackdrop)) {
+        // Recording the whole foreground costs a layer redraw, so it only happens while the menu is open.
+        Box(Modifier.fillMaxSize().layerBackdrop(contentBackdrop, frozen = { sheet == null })) {
         if (wide) {
             Row(
                 Modifier

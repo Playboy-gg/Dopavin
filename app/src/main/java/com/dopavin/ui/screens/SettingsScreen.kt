@@ -67,6 +67,7 @@ private enum class SettingsCategory(val icon: Int, val title: Int, val summary: 
     Appearance(R.drawable.ic_palette, R.string.cat_appearance, R.string.settings_sum_appearance),
     Glass(R.drawable.ic_glass, R.string.cat_glass, R.string.settings_sum_glass),
     Privacy(R.drawable.ic_shield_check, R.string.cat_privacy, R.string.settings_sum_privacy),
+    Accounts(R.drawable.ic_person, R.string.cat_accounts, R.string.settings_sum_accounts),
     Updates(R.drawable.ic_download, R.string.cat_updates, R.string.settings_sum_updates),
     About(R.drawable.ic_info, R.string.cat_about, R.string.settings_sum_about),
 }
@@ -174,7 +175,7 @@ private fun Hub(onOpen: (SettingsCategory) -> Unit) {
             SettingsCategory.Playback, SettingsCategory.Sound, SettingsCategory.Downloads, SettingsCategory.Streaming,
         ),
         R.string.settings_grp_experience to listOf(SettingsCategory.Appearance, SettingsCategory.Glass),
-        R.string.settings_grp_app to listOf(SettingsCategory.Privacy, SettingsCategory.Updates, SettingsCategory.About),
+        R.string.settings_grp_app to listOf(SettingsCategory.Privacy, SettingsCategory.Accounts, SettingsCategory.Updates, SettingsCategory.About),
     )
     Column(Modifier.padding(bottom = Dimens.xs)) {
         groups.forEach { (label, cats) ->
@@ -246,7 +247,7 @@ private fun rowLabels(cat: SettingsCategory): List<String> = when (cat) {
     SettingsCategory.Playback -> listOf(
         R.string.settings_skip_silence, R.string.settings_pause_unplug, R.string.settings_keep_screen_on,
         R.string.settings_keep_pitch, R.string.settings_sleep_fade, R.string.settings_autoplay,
-        R.string.settings_resume_connect, R.string.settings_autoplay_fresh,
+        R.string.settings_resume_connect, R.string.settings_autoplay_fresh, R.string.settings_fade,
     )
     SettingsCategory.Sound -> listOf(R.string.eq_title)
     SettingsCategory.Downloads -> listOf(
@@ -273,6 +274,11 @@ private fun rowLabels(cat: SettingsCategory): List<String> = when (cat) {
     )
     SettingsCategory.About -> listOf(
         R.string.settings_restore, R.string.about_licences, R.string.about_view_source,
+    )
+    SettingsCategory.Accounts -> listOf(
+        R.string.acc_lb_connect, R.string.acc_lb_send, R.string.acc_sub_connect, R.string.acc_sub_random,
+        R.string.acc_sub_starred, R.string.acc_sub_search, R.string.acc_yt_sign_in, R.string.acc_yt_likes,
+        R.string.acc_yt_import,
     )
     SettingsCategory.Updates -> listOf(
         R.string.update_check_now, R.string.update_auto, R.string.update_download, R.string.update_install,
@@ -303,6 +309,26 @@ private fun CategoryPage(
             Toggle(R.string.settings_autoplay, R.string.settings_autoplay_body, settings.autoplay, actions::setAutoplay, match)
             Toggle(R.string.settings_autoplay_fresh, R.string.settings_autoplay_fresh_body, settings.autoplayFresh, actions::setAutoplayFresh, match)
             Toggle(R.string.settings_resume_connect, R.string.settings_resume_connect_body, settings.resumeOnConnect, actions::setResumeOnConnect, match)
+            val fadeLabel = stringResource(R.string.settings_fade)
+            if (match(fadeLabel)) {
+                Column(Modifier.padding(horizontal = Dimens.screenEdge, vertical = Dimens.sm)) {
+                    AppText(fadeLabel, AppTheme.type.bodyStrong)
+                    AppText(stringResource(R.string.settings_fade_body), AppTheme.type.bodySmall, color = colors.textSecondary, maxLines = 3)
+                    Spacer(Modifier.height(Dimens.sm))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
+                        verticalArrangement = Arrangement.spacedBy(Dimens.sm),
+                    ) {
+                        listOf(0, 2, 4, 6, 8, 12).forEach { sec ->
+                            SelectChip(
+                                text = if (sec == 0) stringResource(R.string.fade_off) else stringResource(R.string.fade_seconds, sec),
+                                selected = settings.fadeSeconds == sec,
+                                onClick = { actions.setFadeSeconds(sec) },
+                            )
+                        }
+                    }
+                }
+            }
         }
         SettingsCategory.Sound -> {
             val label = stringResource(R.string.eq_title)
@@ -445,6 +471,7 @@ private fun CategoryPage(
                 )
             }
         }
+        SettingsCategory.Accounts -> AccountsPage(actions, match)
         SettingsCategory.Updates -> UpdatesPage(actions, settings.autoUpdateCheck, match)
         SettingsCategory.About -> {
             AboutPage(actions, onOpenPrivacy = { onNavigate(SettingsCategory.Privacy) })
@@ -617,6 +644,7 @@ private fun LyricsProviderPicker(selected: String, onSelect: (String) -> Unit) {
                             com.dopavin.data.LyricsProviders.LYRICSPLUS -> R.string.lyrics_provider_lyricsplus
                             com.dopavin.data.LyricsProviders.UNISON -> R.string.lyrics_provider_unison
                             com.dopavin.data.LyricsProviders.KUGOU -> R.string.lyrics_provider_kugou
+                            com.dopavin.data.LyricsProviders.LRCRED -> R.string.lyrics_provider_lrcred
                             else -> R.string.lyrics_provider_choose
                         },
                     ),
@@ -632,6 +660,7 @@ private fun LyricsProviderPicker(selected: String, onSelect: (String) -> Unit) {
                             com.dopavin.data.LyricsProviders.LYRICSPLUS -> R.string.lyrics_provider_lyricsplus_desc
                             com.dopavin.data.LyricsProviders.UNISON -> R.string.lyrics_provider_unison_desc
                             com.dopavin.data.LyricsProviders.KUGOU -> R.string.lyrics_provider_kugou_desc
+                            com.dopavin.data.LyricsProviders.LRCRED -> R.string.lyrics_provider_lrcred_desc
                             else -> R.string.lyrics_provider_choose_desc
                         },
                     ),

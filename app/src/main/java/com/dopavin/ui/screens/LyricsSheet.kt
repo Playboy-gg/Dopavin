@@ -221,6 +221,7 @@ private fun providerName(id: String): String = stringResource(
         com.dopavin.data.LyricsProviders.LYRICSPLUS -> R.string.lyrics_provider_lyricsplus
         com.dopavin.data.LyricsProviders.UNISON -> R.string.lyrics_provider_unison
         com.dopavin.data.LyricsProviders.KUGOU -> R.string.lyrics_provider_kugou
+        com.dopavin.data.LyricsProviders.LRCRED -> R.string.lyrics_provider_lrcred
         else -> R.string.lyrics_provider_choose
     },
 )

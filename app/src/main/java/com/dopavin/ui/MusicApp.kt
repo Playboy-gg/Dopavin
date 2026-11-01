@@ -134,6 +134,7 @@ fun MusicApp(
     val effects by viewModel.effects.collectAsStateWithLifecycle()
     val sleep by viewModel.sleep.collectAsStateWithLifecycle()
     val liked by viewModel.liked.collectAsStateWithLifecycle()
+    val favourites by viewModel.favourites.collectAsStateWithLifecycle()
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
     val detailSong by viewModel.detailSong.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
@@ -142,6 +143,7 @@ fun MusicApp(
     val storage by viewModel.storage.collectAsStateWithLifecycle()
     val recap by viewModel.recap.collectAsStateWithLifecycle()
     val update by viewModel.update.collectAsStateWithLifecycle()
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val queueOrigins by viewModel.origins.collectAsStateWithLifecycle()
 
     val colors = AppTheme.colors
@@ -260,6 +262,17 @@ fun MusicApp(
         }
     }
     val backActive by remember { androidx.compose.runtime.derivedStateOf { effBack.value > 0f } }
+    // F-216: one back button, no swap. When the page a back lands on is itself a pushed page (it has a back button),
+    // the floating button simply stays where it is; only when it lands on a tab page (no button) does the button
+    // leave with the page. Decided while idle, so it stays fixed for the whole back move even though the route
+    // (and therefore "the page before") changes at its end.
+    var keepBackButton by remember { mutableStateOf(false) }
+    run {
+        val remaining = view.stack.dropLast(1)
+        val base = remaining.lastOrNull { it != Route.NowPlaying && it != Route.Queue } ?: Route.Root
+        val prevIsPushed = view.stack.size > 1 && base != Route.Root
+        if (committedFrom == null && !backActive) SideEffect { keepBackButton = prevIsPushed }
+    }
     // Bars stay COMPOSED all the time (no recreation when Now Playing closes, so no rebuild, no lost state); they are
     // simply not placed (no drawing, no touches) while the player covers them.
     val barsPlaced by remember {
@@ -425,6 +438,7 @@ fun MusicApp(
         LocalActions provides viewModel,
         LocalDownloads provides downloads,
         com.dopavin.ui.components.LocalUpdate provides update,
+        com.dopavin.ui.components.LocalAccounts provides accounts,
         LocalSheetHost provides sheetHost,
         com.dopavin.ui.components.LocalDialogHost provides dialogHost,
         LocalGlassStyle provides glassStyle,
@@ -474,7 +488,7 @@ fun MusicApp(
                             key, groups, playback, settings, effects, onlineList, subs,
                             currentSong, lyrics, artist, view, visible, groups.byId, downloads,
                             suggestions, liked, detailSong, playlists, playlistSongs,
-                            storage, recap, viewModel,
+                            storage, recap, favourites, viewModel,
                         )
                         else -> Unit
                     }
@@ -570,19 +584,6 @@ fun MusicApp(
                             ) {
                                 Box(Modifier.fillMaxSize().then(roleModifier)) {
                                     renderScreen(pageKey)
-                                    // The page underneath shows its own back button so it arrives with the page.
-                                    if (role == PageRole.Under && pageKey is Route) {
-                                        com.dopavin.ui.components.IconAction(
-                                            icon = R.drawable.ic_back,
-                                            description = null,
-                                            onClick = {},
-                                            modifier = Modifier
-                                                .align(Alignment.TopStart)
-                                                .statusBarsPadding()
-                                                .padding(start = Dimens.sm, top = Dimens.sm),
-                                            glass = true,
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -652,7 +653,13 @@ fun MusicApp(
                     intercept = { requestBack() },
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .graphicsLayer { translationX = backDirection * effBack.value * pagePx },
+                        .graphicsLayer {
+                            // Stays put when the page before also has a back button; leaves with the page otherwise.
+                            translationX = if (keepBackButton) 0f else backDirection * effBack.value * pagePx
+                            // The frame where the route has changed but the layer still holds the old page's button:
+                            // it must not show at rest on the tab page (that was the flash).
+                            alpha = if (!keepBackButton && committedFrom != null && effBack.value == 0f) 0f else 1f
+                        },
                 )
             }
             Column(
@@ -816,6 +823,7 @@ private fun RouteContent(
     playlistSongs: List<Song>,
     storage: StorageUi,
     recap: List<com.dopavin.data.ListenEntry>,
+    favourites: List<Song>,
     actions: MusicActions,
 ) {
     when (route) {
@@ -843,8 +851,19 @@ private fun RouteContent(
         Route.Downloads -> LibraryScreen(
             view, visible, playback, liked, songsById, playlists, downloads, actions,
         )
+        Route.Favourites -> LibraryScreen(
+            view, visible, playback, liked, songsById, playlists, downloads, actions, favourites = favourites, isFavourites = true,
+        )
         is Route.MoodQueue -> SuggestionsScreen(
             title = stringResource(moodLabelRes(route.mood)),
+            subtitle = stringResource(R.string.suggestions_subtitle),
+            state = suggestions,
+            playback = playback,
+            liked = liked,
+            actions = actions,
+        )
+        Route.PersonalMix -> SuggestionsScreen(
+            title = stringResource(R.string.personal_mix_title),
             subtitle = stringResource(R.string.suggestions_subtitle),
             state = suggestions,
             playback = playback,

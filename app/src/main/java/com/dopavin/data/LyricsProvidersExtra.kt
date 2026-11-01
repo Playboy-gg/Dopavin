@@ -263,3 +263,102 @@ class KuGouProvider(
         val BANNED = Regex(""".+].+[:：].+""")
     }
 }
+
+/**
+ * lrc.red / BiniLyrics: word-timed TTML found by recording. First the Bini index identifies the exact
+ * recording (it answers an ISRC and a lrc.red document address); when it does not know the song, the
+ * lrc.red search is used. Every candidate must pass [LyricsMatcher.score] (title, artist, version,
+ * length) and the document address must be a https lrc.red one, so a wrong edit or a foreign host is
+ * never accepted.
+ */
+class LrcRedProvider(
+    private val http: LyricsHttp,
+    private val timeoutMs: Int = 5_000,
+) : LyricsProvider {
+    override val id = LyricsProviders.LRCRED
+    override val capabilities = LyricsProviders.capabilities(id)
+
+    override suspend fun fetch(query: LyricsQuery): ProviderOutcome = guarded {
+        if (query.title.isBlank() || query.artist.isBlank()) return@guarded ProviderOutcome.NotFound
+        var outcome: ProviderOutcome = ProviderOutcome.NotFound
+        for (step in 0..1) {
+            val url = (if (step == 0) biniDocument(query) else searchDocument(query)) ?: continue
+            val reply = http.get(url, timeoutMs)
+            if (reply.code == 429) return@guarded ProviderOutcome.RateLimited(429)
+            if (reply.code !in 200..299) continue
+            val o = docFromText(id, reply.body, CONFIDENCE, query.durationSec)
+            if (o is ProviderOutcome.Success) return@guarded o
+            outcome = o
+        }
+        outcome
+    }
+
+    private suspend fun biniDocument(q: LyricsQuery): String? {
+        val url = buildString {
+            append(BINI).append("/?track=").append(enc(q.title)).append("&artist=").append(enc(q.artist))
+            if (q.album.isNotBlank()) append("&album=").append(enc(q.album))
+            if (q.durationSec > 0) append("&duration=").append(q.durationSec)
+        }
+        val reply = http.get(url, timeoutMs)
+        if (reply.code !in 200..299) return null
+        return pickBini(q, reply.body)
+    }
+
+    private suspend fun searchDocument(q: LyricsQuery): String? {
+        val reply = http.get("$LRC_RED/search.json?q=" + enc("${q.title} ${q.artist}".trim()), timeoutMs)
+        if (reply.code !in 200..299) return null
+        return pickSearch(q, reply.body)
+    }
+
+    companion object {
+        private const val BINI = "https://lyrics-api.binimum.org"
+        private const val LRC_RED = "https://lrc.red"
+        private const val CONFIDENCE = 0.9f
+        private const val DURATION_TOLERANCE_S = 3.0
+        private val isrcShape = Regex("[A-Z]{2}[A-Z0-9]{3}\\d{7}")
+
+        internal fun documentUrl(isrc: String?): String? {
+            val v = isrc?.trim()?.uppercase() ?: return null
+            return v.takeIf { isrcShape.matches(it) }?.let { "$LRC_RED/s/$it.ttml" }
+        }
+
+        /** Only a https lrc.red address is followed. */
+        internal fun safeLrcRed(url: String?): String? {
+            val u = url?.trim() ?: return null
+            return u.takeIf { it.startsWith("https://lrc.red/") || it.startsWith("https://www.lrc.red/") }
+        }
+
+        private fun fits(q: LyricsQuery, title: String?, artist: String?, duration: Double?): Boolean {
+            if (LyricsMatcher.score(q, title, artist, duration) == null) return false
+            // Another edit (live / remix ...) of the same title is another recording.
+            val wanted = TrackMatch.versions(q.rawTitle.ifBlank { q.title })
+            return TrackMatch.versions(title.orEmpty()) == wanted
+        }
+
+        internal fun pickBini(q: LyricsQuery, body: String): String? {
+            val results = MiniJson.list(MiniJson.obj(MiniJson.parse(body))?.get("results")) ?: return null
+            for (r in results) {
+                val o = MiniJson.obj(r) ?: continue
+                if (!fits(q, MiniJson.str(o["track_name"]), MiniJson.str(o["artist_name"]), o["duration"] as? Double)) continue
+                safeLrcRed(MiniJson.str(o["lyricsUrl"]))?.let { return it }
+                documentUrl(MiniJson.str(o["isrc"]))?.let { return it }
+            }
+            return null
+        }
+
+        internal fun pickSearch(q: LyricsQuery, body: String): String? {
+            val hits = MiniJson.list(MiniJson.obj(MiniJson.parse(body))?.get("hits")) ?: return null
+            var best: Pair<String, Double>? = null
+            for (h in hits) {
+                val o = MiniJson.obj(h) ?: continue
+                val duration = o["duration"] as? Double
+                if (!fits(q, MiniJson.str(o["title"]), MiniJson.str(o["artist"]), duration)) continue
+                val url = documentUrl(MiniJson.str(o["isrc"])) ?: continue
+                val gap = if (q.durationSec > 0 && duration != null) abs(duration - q.durationSec) else 0.0
+                if (gap > DURATION_TOLERANCE_S) continue
+                if (best == null || gap < best.second) best = url to gap
+            }
+            return best?.first
+        }
+    }
+}

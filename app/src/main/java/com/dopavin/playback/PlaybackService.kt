@@ -19,8 +19,8 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import com.dopavin.MainActivity
 import com.dopavin.data.ONLINE_SCHEME
 import com.dopavin.data.OnlineRepository
@@ -34,9 +34,11 @@ import com.dopavin.data.SettingsStore
  * the notification, the lock screen and headset buttons keep working without the UI.
  */
 @OptIn(UnstableApi::class)
-class PlaybackService : MediaSessionService() {
+class PlaybackService : MediaLibraryService() {
 
-    private var mediaSession: MediaSession? = null
+    private var mediaSession: MediaLibrarySession? = null
+    private var scrobbler: Scrobbler? = null
+    private var songFade: SongFade? = null
     private lateinit var store: PlaybackStore
 
     /** Queue ids are only rebuilt when the timeline changes; saving otherwise reuses this. */
@@ -115,6 +117,15 @@ class PlaybackService : MediaSessionService() {
                 val local = downloads.fileFor(videoId)
                 val target = if (local != null) {
                     Uri.fromFile(local)
+                } else if (com.dopavin.data.Subsonic.isServerSong(videoId)) {
+                    // F-220: a song of the owner's Subsonic server: the stream address (with a fresh login token) is built now.
+                    val account = com.dopavin.data.AccountStore(this)
+                    Uri.parse(
+                        com.dopavin.data.Subsonic.streamUrl(
+                            com.dopavin.data.SubsonicServer(account.subsonicUrl, account.subsonicUser, account.subsonicPassword),
+                            videoId.removePrefix(com.dopavin.data.Subsonic.ID_PREFIX),
+                        ),
+                    )
                 } else {
                     Uri.parse(online.resolveBlocking(videoId, settingsStore.load().effectiveStreamQuality(this)))
                 }
@@ -141,11 +152,16 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
+        // Shuffle is done by reordering the queue itself (PlayerConnection), so the player must
+        // never pick its own random order: what the queue shows is exactly what plays.
+        player.setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.UnshuffledShuffleOrder(0))
         player.addListener(saveListener)
         player.addListener(noisyListener)
         (getSystemService(AUDIO_SERVICE) as AudioManager)
             .registerAudioDeviceCallback(deviceCallback, Handler(Looper.getMainLooper()))
         PlaybackRuntime.attach(this, player)
+        scrobbler = Scrobbler(this, player).also { it.start() }
+        songFade = SongFade(this, player).also { it.start() }
 
         val openApp = PendingIntent.getActivity(
             this,
@@ -162,17 +178,22 @@ class PlaybackService : MediaSessionService() {
             }
         }
 
-        mediaSession = MediaSession.Builder(this, sessionPlayer)
+        // F-222: a library session, so Android Auto and car screens can browse recent songs, favourites and playlists.
+        mediaSession = MediaLibrarySession.Builder(this, sessionPlayer, LibraryTree(this))
             .setBitmapLoader(ArtworkBitmapLoader(this))
             .setSessionActivity(openApp)
             .build()
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
         mediaSession
 
     override fun onDestroy() {
         (getSystemService(AUDIO_SERVICE) as AudioManager).unregisterAudioDeviceCallback(deviceCallback)
+        scrobbler?.stop()
+        songFade?.stop()
+        scrobbler = null
+        songFade = null
         mediaSession?.run {
             player.removeListener(noisyListener)
             saveState(player)

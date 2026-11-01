@@ -97,6 +97,8 @@
     <string name="reason_artist">Favourite artist</string>
     <string name="reason_session">From this session</string>
     <string name="reason_rediscovery">Back in rotation</string>
+    <string name="reason_related">Similar to what you play</string>
+    <string name="personal_mix_title">Personal Mix</string>
     <string name="menu_song_radio">Song radio</string>
     <string name="menu_not_interested">Not interested</string>
     <string name="song_radio_title">Radio · %1$s</string>

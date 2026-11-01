@@ -80,6 +80,9 @@ val LocalDownloads = staticCompositionLocalOf { DownloadsUi() }
 /** F-206: the update check state, for the About page. */
 val LocalUpdate = staticCompositionLocalOf { com.dopavin.data.UpdateUi() }
 
+/** F-217: what the Accounts page shows (no secrets). */
+val LocalAccounts = staticCompositionLocalOf { com.dopavin.data.AccountsUi() }
+
 /**
  * Bridge for call sites that keep a local "open" flag: when [expanded] turns true the sheet is shown
  * on the shared host and [onDismiss] resets the caller's flag at once (the host owns visibility).

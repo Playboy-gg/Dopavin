@@ -48,34 +48,33 @@ class HistoryStore(context: Context) {
         synchronized(entries) { load() }
     }
 
-    /** Upserts [song]: the same identity closer than [GAP_MS] only refreshes the timestamp. */
+    /** Upserts [song]: the same identity closer than [GAP_MS] changes nothing; a later replay MOVES the row to the end. */
     fun record(song: Song, now: Long = System.currentTimeMillis()): Boolean {
         val title = song.title.trim()
         if (title.isBlank()) return false
         return synchronized(entries) {
-            val identity = song.videoId ?: "l${song.id}"
-            for (i in entries.indices.reversed()) {
-                val e = entries[i]
-                val same = e.videoId == song.videoId && (e.videoId != null || e.songId == song.id)
-                if (same && identity.isNotBlank()) {
-                    if (now - e.at < GAP_MS) return@synchronized false
-                    entries[i] = e.copy(at = now)
-                    persist()
-                    return@synchronized true
-                }
-            }
-            entries += HistoryEntry(
-                title = title,
-                artist = song.artist.trim(),
-                durationMs = song.durationMs,
-                songId = song.id,
-                videoId = song.videoId,
-                thumbUri = song.thumbUri?.toString(),
-                at = now,
+            val changed = HistoryMath.upsertNewest(
+                entries = entries,
+                now = now,
+                gapMs = GAP_MS,
+                at = { it.at },
+                withAt = { e, t -> e.copy(at = t) },
+                match = { e -> e.videoId == song.videoId && (e.videoId != null || e.songId == song.id) },
+                create = {
+                    HistoryEntry(
+                        title = title,
+                        artist = song.artist.trim(),
+                        durationMs = song.durationMs,
+                        songId = song.id,
+                        videoId = song.videoId,
+                        thumbUri = song.thumbUri?.toString(),
+                        at = now,
+                    )
+                },
+                cap = CAP,
             )
-            if (entries.size > CAP) repeat(entries.size - CAP) { entries.removeAt(0) }
-            persist()
-            true
+            if (changed) persist()
+            changed
         }
     }
 
@@ -106,7 +105,7 @@ class HistoryStore(context: Context) {
 
     /** The most recently played online song, or null before any online play. */
     fun lastOnlineSong(): Song? = synchronized(entries) {
-        entries.lastOrNull { it.videoId != null }?.toSong()
+        entries.filter { it.videoId != null }.maxByOrNull { it.at }?.toSong()
     }
 
     /** The newest plays, newest first (owner F-97, the Home history shelf). */
