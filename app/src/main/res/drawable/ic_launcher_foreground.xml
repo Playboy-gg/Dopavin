@@ -4,7 +4,6 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Note head + stem, then three "pulse" bars: dopamine (energy) + veena (music). -->
     <group android:translateX="6">
     <path
         android:fillColor="#1A0A10"

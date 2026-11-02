@@ -1,11 +1,8 @@
 package com.dopavin.data
-
 import android.content.Context
 import android.net.Uri
 import org.json.JSONArray
 import org.json.JSONObject
-
-/** The online part of Home as it was last fetched, so the next cold start can paint it at once. */
 data class HomeSnapshot(
     val savedAt: Long,
     val trending: List<Song>,
@@ -13,16 +10,8 @@ data class HomeSnapshot(
     val related: List<Song>,
     val artists: List<Pair<String, List<Song>>>,
 )
-
-/**
- * Tiny SharedPreferences JSON mirror of the Home shelves (stale-while-revalidate, F-117). Only
- * display metadata is stored (title, artist, duration, video id, thumbnail); stream urls never are.
- * One small read at start-up, writes use apply().
- */
 class HomeCache(context: Context) {
-
     private val prefs = context.applicationContext.getSharedPreferences("home_cache", Context.MODE_PRIVATE)
-
     fun load(): HomeSnapshot? = runCatching {
         val raw = prefs.getString(KEY, null) ?: return null
         val o = JSONObject(raw)
@@ -40,7 +29,6 @@ class HomeCache(context: Context) {
             },
         )
     }.getOrNull()
-
     fun save(snapshot: HomeSnapshot) {
         val o = JSONObject()
             .put("at", snapshot.savedAt)
@@ -57,17 +45,12 @@ class HomeCache(context: Context) {
             )
         prefs.edit().putString(KEY, o.toString()).apply()
     }
-
     private fun array(list: List<Song>): JSONArray = songsToJson(list)
-
     private fun songs(arr: JSONArray?): List<Song> = songsFromJson(arr)
-
     private companion object {
         const val KEY = "snapshot"
     }
 }
-
-/** Display-metadata JSON of online songs, shared by the Home cache and the subscription feed cache. */
 internal fun songsToJson(list: List<Song>): JSONArray = JSONArray().apply {
     list.forEach { song ->
         put(
@@ -81,7 +64,6 @@ internal fun songsToJson(list: List<Song>): JSONArray = JSONArray().apply {
         )
     }
 }
-
 internal fun songsFromJson(arr: JSONArray?): List<Song> {
     if (arr == null) return emptyList()
     return (0 until arr.length()).mapNotNull { i ->

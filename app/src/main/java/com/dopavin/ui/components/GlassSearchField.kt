@@ -1,5 +1,4 @@
 package com.dopavin.ui.components
-
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,8 +25,6 @@ import com.dopavin.R
 import com.dopavin.ui.glass.glassSurface
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/** Glass pill search field shared by Search and Settings. */
 @Composable
 fun GlassSearchField(
     query: String,

@@ -2,7 +2,6 @@
 <resources>
     <string name="cat_accounts">Accounts &amp; services</string>
     <string name="settings_sum_accounts">ListenBrainz, your own music server, YouTube sign-in</string>
-
     <string name="acc_lb_section">Scrobbling (ListenBrainz)</string>
     <string name="acc_lb_connect">Connect ListenBrainz</string>
     <string name="acc_lb_connect_hint">Paste the user token from your ListenBrainz profile page</string>
@@ -15,7 +14,6 @@
     <string name="acc_disconnect">Disconnect</string>
     <string name="acc_connect">Connect</string>
     <string name="acc_unreachable">Could not reach the server. Check the address and your connection.</string>
-
     <string name="acc_sub_section">Your music server (Subsonic)</string>
     <string name="acc_sub_connect">Connect a server</string>
     <string name="acc_sub_connect_hint">Navidrome, Airsonic, Gonic and other Subsonic-compatible servers</string>
@@ -30,7 +28,6 @@
     <string name="acc_sub_connected">Server connected</string>
     <string name="acc_sub_failed">The server said: %1$s</string>
     <string name="acc_sub_disconnect">Disconnect from %1$s</string>
-
     <string name="acc_yt_section">YouTube Music</string>
     <string name="acc_yt_sign_in">Sign in</string>
     <string name="acc_yt_sign_in_hint">Opens Google\'s own sign-in page. Dopavin never sees your password.</string>
@@ -42,10 +39,8 @@
     <string name="acc_yt_imported">%1$d playlists imported</string>
     <string name="acc_yt_failed">Could not read your library. Sign in again or try later.</string>
     <string name="acc_yt_sign_out">Sign out</string>
-
     <string name="acc_privacy">Tokens, passwords and the sign-in session stay on this phone and are only sent to the service they belong to. They are never part of a backup file.</string>
     <string name="acc_working">Working…</string>
-
     <string name="settings_fade">Fade between songs</string>
     <string name="settings_fade_body">The song fades out and the next one fades in. This is a fade, not an overlap.</string>
     <string name="fade_off">Off</string>

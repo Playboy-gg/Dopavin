@@ -9,7 +9,6 @@ body:
         Thanks for taking the time to report a bug. Please fill in as much as you can — it makes the fix much faster.
 
         Do **not** include ListenBrainz tokens, Subsonic passwords, YouTube cookies, server addresses or personal data in screenshots or logs.
-
   - type: checkboxes
     id: checks
     attributes:

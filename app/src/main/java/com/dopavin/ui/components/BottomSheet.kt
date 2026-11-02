@@ -1,5 +1,4 @@
 package com.dopavin.ui.components
-
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -42,14 +41,6 @@ import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-
-/**
- * Modal bottom sheet: dimmed scrim, rounded panel that slides up, drag the handle (or the title area
- * you put under [header]) down to close, tap the scrim or press back to close. Closing animates and
- * then calls [onDismiss].
- *
- * Only the handle strip handles drags, so lists inside [content] scroll normally.
- */
 @Composable
 fun BottomSheet(
     onDismiss: () -> Unit,
@@ -62,25 +53,20 @@ fun BottomSheet(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val closeLabel = stringResource(R.string.cd_close_sheet)
-
     BoxWithConstraints(modifier.fillMaxSize()) {
         val sheetHeight = maxHeight * heightFraction
         val heightPx = with(density) { sheetHeight.toPx() }
         val offset = remember { Animatable(heightPx) }
-
         LaunchedEffect(heightPx) {
             offset.animateTo(0f, tween(motion.medium))
         }
-
         fun dismiss() {
             scope.launch {
                 offset.animateTo(heightPx, tween(motion.medium))
                 onDismiss()
             }
         }
-
         BackHandler { dismiss() }
-
         val dim = (1f - (offset.value / heightPx).coerceIn(0f, 1f)) * 0.55f
         Box(
             Modifier
@@ -93,7 +79,6 @@ fun BottomSheet(
                 )
                 .semantics { contentDescription = closeLabel },
         )
-
         val shape = com.kyant.capsule.ContinuousRoundedRectangle(
             topStart = androidx.compose.foundation.shape.CornerSize(Dimens.radiusXLarge),
             topEnd = androidx.compose.foundation.shape.CornerSize(Dimens.radiusXLarge),
@@ -107,7 +92,6 @@ fun BottomSheet(
                 .height(sheetHeight)
                 .offset { IntOffset(0, offset.value.roundToInt().coerceAtLeast(0)) }
                 .glassSurface(shape, fallback = colors.surfaceRaised, tint = colors.surfaceRaised, floating = true)
-                // Swallow taps so they do not reach the scrim behind the panel.
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -146,4 +130,3 @@ fun BottomSheet(
         }
     }
 }
-

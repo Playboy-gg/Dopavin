@@ -1,5 +1,4 @@
 package com.kyant.capsule
-
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
@@ -9,10 +8,8 @@ import com.kyant.capsule.core.Point
 import com.kyant.capsule.path.PathSegments
 import com.kyant.capsule.path.buildCirclePathSegments
 import com.kyant.capsule.path.toPath
-
 @Immutable
 abstract class AdvancedContinuity : Continuity {
-
     protected abstract fun createStandardRoundedRectanglePathSegments(
         width: Double,
         height: Double,
@@ -21,7 +18,6 @@ abstract class AdvancedContinuity : Continuity {
         bottomRight: Double,
         bottomLeft: Double
     ): PathSegments
-
     protected open fun createStandardRoundedRectangleOutline(
         size: Size,
         topLeft: Float,
@@ -40,7 +36,6 @@ abstract class AdvancedContinuity : Continuity {
             ).toPath()
         return Outline.Generic(path)
     }
-
     protected open fun createHorizontalCapsulePathSegments(width: Double, height: Double): PathSegments {
         val cornerRadius = width * 0.5
         return createStandardRoundedRectanglePathSegments(
@@ -52,7 +47,6 @@ abstract class AdvancedContinuity : Continuity {
             bottomLeft = cornerRadius
         )
     }
-
     protected open fun createHorizontalCapsuleOutline(size: Size): Outline {
         val path =
             createHorizontalCapsulePathSegments(
@@ -61,7 +55,6 @@ abstract class AdvancedContinuity : Continuity {
             ).toPath()
         return Outline.Generic(path)
     }
-
     protected open fun createVerticalCapsulePathSegments(width: Double, height: Double): PathSegments {
         val cornerRadius = height * 0.5
         return createStandardRoundedRectanglePathSegments(
@@ -73,7 +66,6 @@ abstract class AdvancedContinuity : Continuity {
             bottomLeft = cornerRadius
         )
     }
-
     protected open fun createVerticalCapsuleOutline(size: Size): Outline {
         val path =
             createVerticalCapsulePathSegments(
@@ -82,7 +74,6 @@ abstract class AdvancedContinuity : Continuity {
             ).toPath()
         return Outline.Generic(path)
     }
-
     protected open fun createCirclePathSegments(size: Double): PathSegments {
         val radius = size * 0.5
         return buildCirclePathSegments(
@@ -90,7 +81,6 @@ abstract class AdvancedContinuity : Continuity {
             radius = radius
         )
     }
-
     protected open fun createCircleOutline(size: Float): Outline {
         val radius = size * 0.5f
         return Outline.Rounded(
@@ -101,7 +91,6 @@ abstract class AdvancedContinuity : Continuity {
             )
         )
     }
-
     final override fun createRoundedRectanglePathSegments(
         width: Double,
         height: Double,
@@ -110,13 +99,11 @@ abstract class AdvancedContinuity : Continuity {
         bottomRight: Double,
         bottomLeft: Double
     ): PathSegments {
-        // capsule
         if ((topLeft + topRight == width || topLeft + bottomLeft == height) &&
             (topLeft == topRight && bottomRight == bottomLeft && topLeft == bottomRight)
         ) {
             return createCapsulePathSegments(width, height)
         }
-
         return createStandardRoundedRectanglePathSegments(
             width = width,
             height = height,
@@ -126,7 +113,6 @@ abstract class AdvancedContinuity : Continuity {
             bottomLeft = bottomLeft
         )
     }
-
     final override fun createRoundedRectangleOutline(
         size: Size,
         topLeft: Float,
@@ -134,13 +120,11 @@ abstract class AdvancedContinuity : Continuity {
         bottomRight: Float,
         bottomLeft: Float
     ): Outline {
-        // capsule
         if ((topLeft + topRight == size.width || topLeft + bottomLeft == size.height) &&
             (topLeft == topRight && bottomRight == bottomLeft && topLeft == bottomRight)
         ) {
             return createCapsuleOutline(size)
         }
-
         return createStandardRoundedRectangleOutline(
             size = size,
             topLeft = topLeft,
@@ -149,14 +133,12 @@ abstract class AdvancedContinuity : Continuity {
             bottomLeft = bottomLeft
         )
     }
-
     fun createCapsulePathSegments(width: Double, height: Double): PathSegments =
         when {
             width > height -> createHorizontalCapsulePathSegments(width, height)
             width < height -> createVerticalCapsulePathSegments(width, height)
             else -> createCirclePathSegments(width)
         }
-
     final override fun createCapsuleOutline(size: Size): Outline =
         when {
             size.width > size.height -> createHorizontalCapsuleOutline(size)

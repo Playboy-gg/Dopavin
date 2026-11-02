@@ -1,5 +1,4 @@
 package com.kyant.capsule
-
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.geometry.Size
@@ -7,10 +6,8 @@ import androidx.compose.ui.graphics.Outline
 import com.kyant.capsule.continuities.G2Continuity
 import com.kyant.capsule.path.PathSegments
 import com.kyant.capsule.path.toPath
-
 @Immutable
 interface Continuity {
-
     fun createRoundedRectanglePathSegments(
         width: Double,
         height: Double,
@@ -19,7 +16,6 @@ interface Continuity {
         bottomRight: Double,
         bottomLeft: Double
     ): PathSegments
-
     fun createRoundedRectangleOutline(
         size: Size,
         topLeft: Float,
@@ -38,7 +34,6 @@ interface Continuity {
             ).toPath()
         return Outline.Generic(path)
     }
-
     fun createCapsuleOutline(size: Size): Outline {
         val radius = size.minDimension * 0.5f
         return createRoundedRectangleOutline(
@@ -49,11 +44,8 @@ interface Continuity {
             bottomLeft = radius
         )
     }
-
     fun lerp(stop: Continuity, fraction: Double): Continuity
-
     companion object {
-
         @Stable
         val Default: Continuity = G2Continuity()
     }

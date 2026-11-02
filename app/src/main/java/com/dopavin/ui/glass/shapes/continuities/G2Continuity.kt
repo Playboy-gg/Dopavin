@@ -1,13 +1,4 @@
-/*
- * Vendored from Kyant0/Capsule
- * https://github.com/Kyant0/Capsule — Copyright 2025 Kyant0, Apache License 2.0
- * capsule/src/main/java/com/kyant/capsule/continuities/G2Continuity.kt
- *
- * Vendored so the shape ships as source with this app. Package renamed
- * accordingly (com.kyant.capsule -> com.dopavin.ui.glass.shapes).
- */
 package com.dopavin.ui.glass.shapes.continuities
-
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.util.fastCoerceAtLeast
 import androidx.compose.ui.util.fastCoerceIn
@@ -22,20 +13,17 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
-
 @Immutable
 data class G2Continuity(
     val profile: G2ContinuityProfile = G2ContinuityProfile.RoundedRectangle,
     val capsuleProfile: G2ContinuityProfile = G2ContinuityProfile.Capsule
 ) : AdvancedContinuity() {
-
     private fun resolveBezier(profile: G2ContinuityProfile) =
         when (profile) {
             this.profile -> this.profile.bezier
             this.capsuleProfile -> this.capsuleProfile.bezier
             else -> profile.bezier
         }
-
     override fun createStandardRoundedRectanglePathSegments(
         width: Double,
         height: Double,
@@ -46,7 +34,6 @@ data class G2Continuity(
     ): PathSegments {
         val centerX = width * 0.5
         val centerY = height * 0.5
-
         val ratioTLV = ((centerY / topLeft - 1.0) / profile.extendedFraction).fastCoerceIn(0.0, 1.0)
         val ratioTLH = ((centerX / topLeft - 1.0) / profile.extendedFraction).fastCoerceIn(0.0, 1.0)
         val ratioTRH = ((centerX / topRight - 1.0) / profile.extendedFraction).fastCoerceIn(0.0, 1.0)
@@ -55,17 +42,14 @@ data class G2Continuity(
         val ratioBRH = ((centerX / bottomRight - 1.0) / profile.extendedFraction).fastCoerceIn(0.0, 1.0)
         val ratioBLH = ((centerX / bottomLeft - 1.0) / profile.extendedFraction).fastCoerceIn(0.0, 1.0)
         val ratioBLV = ((centerY / bottomLeft - 1.0) / profile.extendedFraction).fastCoerceIn(0.0, 1.0)
-
         val ratioTL = min(ratioTLV, ratioTLH)
         val ratioTR = min(ratioTRH, ratioTRV)
         val ratioBR = min(ratioBRV, ratioBRH)
         val ratioBL = min(ratioBLH, ratioBLV)
-
         val extFracTL = lerp(capsuleProfile.extendedFraction, profile.extendedFraction, ratioTL)
         val extFracTR = lerp(capsuleProfile.extendedFraction, profile.extendedFraction, ratioTR)
         val extFracBR = lerp(capsuleProfile.extendedFraction, profile.extendedFraction, ratioBR)
         val extFracBL = lerp(capsuleProfile.extendedFraction, profile.extendedFraction, ratioBL)
-
         val extFracTLV = extFracTL * ratioTLV
         val extFracTLH = extFracTL * ratioTLH
         val extFracTRH = extFracTR * ratioTRH
@@ -74,7 +58,6 @@ data class G2Continuity(
         val extFracBRH = extFracBR * ratioBRH
         val extFracBLH = extFracBL * ratioBLH
         val extFracBLV = extFracBL * ratioBLV
-
         val offsetTLV = -topLeft * extFracTLV
         val offsetTLH = -topLeft * extFracTLH
         val offsetTRH = -topRight * extFracTRH
@@ -83,7 +66,6 @@ data class G2Continuity(
         val offsetBRH = -bottomRight * extFracBRH
         val offsetBLH = -bottomLeft * extFracBLH
         val offsetBLV = -bottomLeft * extFracBLV
-
         val bezKScaleTLV = lerp(capsuleProfile.bezierCurvatureScale, profile.bezierCurvatureScale, ratioTLV)
         val bezKScaleTLH = lerp(capsuleProfile.bezierCurvatureScale, profile.bezierCurvatureScale, ratioTLH)
         val bezKScaleTRH = lerp(capsuleProfile.bezierCurvatureScale, profile.bezierCurvatureScale, ratioTRH)
@@ -92,17 +74,14 @@ data class G2Continuity(
         val bezKScaleBRH = lerp(capsuleProfile.bezierCurvatureScale, profile.bezierCurvatureScale, ratioBRH)
         val bezKScaleBLH = lerp(capsuleProfile.bezierCurvatureScale, profile.bezierCurvatureScale, ratioBLH)
         val bezKScaleBLV = lerp(capsuleProfile.bezierCurvatureScale, profile.bezierCurvatureScale, ratioBLV)
-
         val arcFracTL = lerp(capsuleProfile.arcFraction, profile.arcFraction, ratioTL)
         val arcFracTR = lerp(capsuleProfile.arcFraction, profile.arcFraction, ratioTR)
         val arcFracBR = lerp(capsuleProfile.arcFraction, profile.arcFraction, ratioBR)
         val arcFracBL = lerp(capsuleProfile.arcFraction, profile.arcFraction, ratioBL)
-
         val arcKScaleTL = 1.0 + (profile.arcCurvatureScale - 1.0) * ratioTL
         val arcKScaleTR = 1.0 + (profile.arcCurvatureScale - 1.0) * ratioTR
         val arcKScaleBR = 1.0 + (profile.arcCurvatureScale - 1.0) * ratioBR
         val arcKScaleBL = 1.0 + (profile.arcCurvatureScale - 1.0) * ratioBL
-
         val bezierTLV = resolveBezier(G2ContinuityProfile(extFracTLV, arcFracTL, bezKScaleTLV, arcKScaleTL))
         val bezierTLH = resolveBezier(G2ContinuityProfile(extFracTLH, arcFracTL, bezKScaleTLH, arcKScaleTL))
         val bezierTRH = resolveBezier(G2ContinuityProfile(extFracTRH, arcFracTR, bezKScaleTRH, arcKScaleTR))
@@ -111,12 +90,10 @@ data class G2Continuity(
         val bezierBRH = resolveBezier(G2ContinuityProfile(extFracBRH, arcFracBR, bezKScaleBRH, arcKScaleBR))
         val bezierBLH = resolveBezier(G2ContinuityProfile(extFracBLH, arcFracBL, bezKScaleBLH, arcKScaleBL))
         val bezierBLV = resolveBezier(G2ContinuityProfile(extFracBLV, arcFracBL, bezKScaleBLV, arcKScaleBL))
-
         return buildPathSegments {
             var x = 0.0
             var y = topLeft
             moveTo(x, y - offsetTLV)
-
             if (topLeft > 0.0) {
                 with(bezierTLV) {
                     cubicTo(
@@ -125,7 +102,6 @@ data class G2Continuity(
                         x + p3.y * topLeft, y - p3.x * topLeft
                     )
                 }
-
                 arcToWithScaledRadius(
                     center = Point(topLeft, topLeft),
                     radius = topLeft,
@@ -133,7 +109,6 @@ data class G2Continuity(
                     startAngle = PI + PI * 0.5 * (1.0 - arcFracTL) * 0.5,
                     sweepAngle = PI * 0.5 * arcFracTL
                 )
-
                 x = topLeft
                 y = 0.0
                 with(bezierTLH) {
@@ -144,11 +119,9 @@ data class G2Continuity(
                     )
                 }
             }
-
             x = width - topRight
             y = 0.0
             lineTo(x + offsetTRH, y)
-
             if (topRight > 0.0) {
                 with(bezierTRH) {
                     cubicTo(
@@ -157,7 +130,6 @@ data class G2Continuity(
                         x + p3.x * topRight, y + p3.y * topRight
                     )
                 }
-
                 arcToWithScaledRadius(
                     center = Point(width - topRight, topRight),
                     radius = topRight,
@@ -165,7 +137,6 @@ data class G2Continuity(
                     startAngle = -PI * 0.5 + PI * 0.5 * (1.0 - arcFracTR) * 0.5,
                     sweepAngle = PI * 0.5 * arcFracTR
                 )
-
                 x = width
                 y = topRight
                 with(bezierTRV) {
@@ -176,11 +147,9 @@ data class G2Continuity(
                     )
                 }
             }
-
             x = width
             y = height - bottomRight
             lineTo(x, y + offsetBRV)
-
             if (bottomRight > 0.0) {
                 with(bezierBRV) {
                     cubicTo(
@@ -189,7 +158,6 @@ data class G2Continuity(
                         x - p3.y * bottomRight, y + p3.x * bottomRight
                     )
                 }
-
                 arcToWithScaledRadius(
                     center = Point(width - bottomRight, height - bottomRight),
                     radius = bottomRight,
@@ -197,7 +165,6 @@ data class G2Continuity(
                     startAngle = 0.0 + PI * 0.5 * (1.0 - arcFracBR) * 0.5,
                     sweepAngle = PI * 0.5 * arcFracBR
                 )
-
                 x = width - bottomRight
                 y = height
                 with(bezierBRH) {
@@ -208,11 +175,9 @@ data class G2Continuity(
                     )
                 }
             }
-
             x = bottomLeft
             y = height
             lineTo(x - offsetBLH, y)
-
             if (bottomLeft > 0.0) {
                 with(bezierBLH) {
                     cubicTo(
@@ -221,7 +186,6 @@ data class G2Continuity(
                         x - p3.x * bottomLeft, y - p3.y * bottomLeft
                     )
                 }
-
                 arcToWithScaledRadius(
                     center = Point(bottomLeft, height - bottomLeft),
                     radius = bottomLeft,
@@ -229,7 +193,6 @@ data class G2Continuity(
                     startAngle = PI * 0.5 + PI * 0.5 * (1.0 - arcFracBL) * 0.5,
                     sweepAngle = PI * 0.5 * arcFracBL
                 )
-
                 x = 0.0
                 y = height - bottomLeft
                 with(bezierBLV) {
@@ -240,15 +203,12 @@ data class G2Continuity(
                     )
                 }
             }
-
             close()
         }
     }
-
     override fun createHorizontalCapsulePathSegments(width: Double, height: Double): PathSegments {
         val radius = height * 0.5
         val centerX = width * 0.5
-
         val ratioH = ((centerX / radius - 1.0) / capsuleProfile.extendedFraction).fastCoerceIn(0.0, 1.0)
         val extFrac = capsuleProfile.extendedFraction
         val extFracH = extFrac * ratioH
@@ -264,23 +224,19 @@ data class G2Continuity(
                     arcCurvatureScale = 1.0
                 )
             ) * radius
-
         val arcRad = PI * 0.5 * arcFrac
         val bezRad = (PI * 0.5 - arcRad) * 0.5
         val sweepRad = (bezRad + arcRad) * 2.0
-
         return buildPathSegments {
             var x = 0.0
             var y = radius
             moveTo(x, y)
-
             arcTo(
                 center = Point(radius, radius),
                 radius = radius,
                 startAngle = PI * 0.5 + bezRad,
                 sweepAngle = sweepRad
             )
-
             x = radius
             y = 0.0
             with(bezierH) {
@@ -290,11 +246,9 @@ data class G2Continuity(
                     x - p0.x.fastCoerceAtLeast(offsetH), y + p0.y
                 )
             }
-
             x = width - radius
             y = 0.0
             lineTo(x + offsetH, y)
-
             with(bezierH) {
                 cubicTo(
                     x + p1.x, y + p1.y,
@@ -302,14 +256,12 @@ data class G2Continuity(
                     x + p3.x, y + p3.y
                 )
             }
-
             arcTo(
                 center = Point(width - radius, radius),
                 radius = radius,
                 startAngle = -(PI * 0.5 - bezRad),
                 sweepAngle = sweepRad
             )
-
             x = width - radius
             y = height
             with(bezierH) {
@@ -319,11 +271,9 @@ data class G2Continuity(
                     x + p0.x.fastCoerceAtLeast(offsetH), y - p0.y
                 )
             }
-
             x = radius
             y = height
             lineTo(x - offsetH, y)
-
             with(bezierH) {
                 cubicTo(
                     x - p1.x, y - p1.y,
@@ -333,11 +283,9 @@ data class G2Continuity(
             }
         }
     }
-
     override fun createVerticalCapsulePathSegments(width: Double, height: Double): PathSegments {
         val radius = width * 0.5
         val centerY = height * 0.5
-
         val ratioV = ((centerY / radius - 1.0) / capsuleProfile.extendedFraction).fastCoerceIn(0.0, 1.0)
         val extFrac = capsuleProfile.extendedFraction
         val extFracV = extFrac * ratioV
@@ -353,16 +301,13 @@ data class G2Continuity(
                     arcCurvatureScale = 1.0
                 )
             ) * radius
-
         val arcRad = PI * 0.5 * arcFrac
         val bezRad = (PI * 0.5 - arcRad) * 0.5
         val sweepRad = (bezRad + arcRad) * 2.0
-
         return buildPathSegments {
             var x = 0.0
             var y = radius
             moveTo(x, y - offsetV)
-
             with(bezierV) {
                 cubicTo(
                     x + p1.y, y - p1.x,
@@ -370,14 +315,12 @@ data class G2Continuity(
                     x + p3.y, y - p3.x
                 )
             }
-
             arcTo(
                 center = Point(radius, radius),
                 radius = radius,
                 startAngle = -(PI - bezRad),
                 sweepAngle = sweepRad
             )
-
             x = width
             y = radius
             with(bezierV) {
@@ -387,11 +330,9 @@ data class G2Continuity(
                     x - p0.y, y - p0.x.fastCoerceAtLeast(offsetV)
                 )
             }
-
             x = width
             y = height - radius
             lineTo(x, y + offsetV)
-
             with(bezierV) {
                 cubicTo(
                     x - p1.y, y + p1.x,
@@ -399,14 +340,12 @@ data class G2Continuity(
                     x - p3.y, y + p3.x
                 )
             }
-
             arcTo(
                 center = Point(width - radius, height - radius),
                 radius = radius,
                 startAngle = bezRad,
                 sweepAngle = sweepRad
             )
-
             x = 0.0
             y = height - radius
             with(bezierV) {
@@ -416,11 +355,9 @@ data class G2Continuity(
                     x + p0.y, y + p0.x.fastCoerceAtLeast(offsetV)
                 )
             }
-
             close()
         }
     }
-
     override fun lerp(stop: Continuity, fraction: Double): Continuity {
         return when (stop) {
             is G2Continuity ->
@@ -428,12 +365,10 @@ data class G2Continuity(
                     profile = lerp(this.profile, stop.profile, fraction),
                     capsuleProfile = lerp(this.capsuleProfile, stop.capsuleProfile, fraction)
                 )
-
             else -> stop.lerp(this, 1f - fraction)
         }
     }
 }
-
 private fun PathSegmentsBuilder.arcToWithScaledRadius(
     center: Point,
     radius: Double,

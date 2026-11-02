@@ -1,5 +1,4 @@
 package com.dopavin.ui.components
-
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -20,8 +19,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/** Fades the lower part of what it draws to transparent, so it melts into the page behind it. */
 fun Modifier.meltIntoPage(): Modifier = this
     .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
     .drawWithContent {
@@ -40,11 +37,6 @@ fun Modifier.meltIntoPage(): Modifier = this
             blendMode = BlendMode.DstIn,
         )
     }
-
-/**
- * Cover page header shared by list screens that look like the artist page: a square cover that
- * melts into the page, the title (and optional subtitle) and the action buttons on it.
- */
 @Composable
 fun CoverHero(
     title: String,

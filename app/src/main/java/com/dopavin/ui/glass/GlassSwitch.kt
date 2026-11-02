@@ -1,5 +1,4 @@
 package com.dopavin.ui.glass
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -17,11 +16,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dopavin.ui.theme.AppTheme
-
-/**
- * Display-only switch (the row around it owns the click and the Role.Switch semantics).
- * Glass track that glows accent when on; solid track when glass is off.
- */
 @Composable
 fun GlassSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val colors = AppTheme.colors

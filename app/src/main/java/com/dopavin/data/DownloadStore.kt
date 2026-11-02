@@ -1,5 +1,4 @@
 package com.dopavin.data
-
 import android.content.Context
 import android.net.Uri
 import android.os.StatFs
@@ -9,20 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-
-/**
- * The downloaded library (F-110/F-111). Audio files live in the app-private folder
- * `filesDir/downloads/` next to a cover image and one small `index.json` (title, artist, duration,
- * size, format). No database, in the house style of the other stores. Everything the UI needs is
- * the [songs] flow; the player only ever needs [fileFor].
- *
- * Process-wide singleton: the UI process (ViewModel), the download engine and the playback service
- * all read the same instance. File work is cheap and synchronous behind one lock; callers that may
- * touch large files ([remove], [removeAll]) run on a background dispatcher.
- */
 class DownloadStore private constructor(context: Context) {
-
-    /** One row of `index.json`. */
     data class Entry(
         val videoId: String,
         val title: String,
@@ -34,62 +20,35 @@ class DownloadStore private constructor(context: Context) {
         val sizeBytes: Long,
         val format: String,
     )
-
     private val appContext = context.applicationContext
-
-    /** The private folder with the audio files; created on first use. */
     val dir: File = File(appContext.filesDir, DIR_NAME).apply { mkdirs() }
-
     private val indexFile = File(dir, INDEX_NAME)
     private val lock = Any()
     private val entries = LinkedHashMap<String, Entry>()
-
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
-
-    /** Every downloaded song, newest first. */
     val songs: StateFlow<List<Song>> = _songs.asStateFlow()
-
     init {
         synchronized(lock) {
             load()
-            // A process that died mid-download leaves .part files behind; nothing resumes them.
             dir.listFiles()?.forEach { if (it.name.endsWith(PART_SUFFIX)) it.delete() }
             publish()
         }
     }
-
-    // ---- Queries ----
-
     fun isDownloaded(videoId: String): Boolean = synchronized(lock) { entries.containsKey(videoId) }
-
-    /** The audio file of a downloaded song, or null when it is not downloaded (or the file vanished). */
     fun fileFor(videoId: String): File? = synchronized(lock) {
         entries[videoId]?.let { File(dir, it.fileName) }?.takeIf { it.isFile && it.length() > 0 }
     }
-
-    /** Ids of every downloaded song, for quick "is this saved" checks. */
     fun downloadedIds(): Set<String> = synchronized(lock) { entries.keys.toSet() }
-
-    /** Sum of all audio and cover bytes. */
     fun totalBytes(): Long = synchronized(lock) {
         dir.listFiles()?.filter { it.isFile && it.name != INDEX_NAME }?.sumOf { it.length() } ?: 0L
     }
-
-    /** Free space on the volume that holds the private folder; 0 when it cannot be read. */
     fun freeBytes(): Long = try {
         StatFs(dir.absolutePath).availableBytes
     } catch (e: Exception) {
         0L
     }
-
-    /** Where an unfinished download is written; renamed by [commit] once complete. */
     fun partFile(videoId: String, extension: String): File = File(dir, "$videoId.$extension$PART_SUFFIX")
-
     fun coverFile(videoId: String): File = File(dir, "$videoId.jpg")
-
-    // ---- Changes ----
-
-    /** Moves a finished [part] file into place and records it. Returns the stored entry, or null if the rename failed. */
     fun commit(
         song: Song,
         part: File,
@@ -122,8 +81,6 @@ class DownloadStore private constructor(context: Context) {
             }
         }
     }
-
-    /** Deletes one download (audio, cover and index row). */
     fun remove(videoId: String) {
         synchronized(lock) {
             val entry = entries.remove(videoId)
@@ -135,11 +92,6 @@ class DownloadStore private constructor(context: Context) {
             }
         }
     }
-
-    /**
-     * Keeps the audio under [limitBytes] by deleting the oldest downloads first. [keepVideoId] (the one
-     * that just finished) is never removed. Returns how many songs were deleted.
-     */
     fun trimTo(limitBytes: Long, keepVideoId: String?): Int = synchronized(lock) {
         var total = entries.values.sumOf { it.sizeBytes }
         var removed = 0
@@ -158,8 +110,6 @@ class DownloadStore private constructor(context: Context) {
         }
         removed
     }
-
-    /** Deletes every download. Returns how many songs were removed. */
     fun removeAll(): Int = synchronized(lock) {
         val count = entries.size
         dir.listFiles()?.forEach { if (it.name != INDEX_NAME) it.delete() }
@@ -168,9 +118,6 @@ class DownloadStore private constructor(context: Context) {
         publish()
         count
     }
-
-    // ---- Mapping ----
-
     private fun toSong(entry: Entry): Song {
         val audio = File(dir, entry.fileName)
         val cover = entry.coverName?.let { File(dir, it) }?.takeIf { it.isFile }
@@ -191,18 +138,12 @@ class DownloadStore private constructor(context: Context) {
             format = entry.format,
         )
     }
-
-    /** Must run under [lock]. */
     private fun publish() {
         _songs.value = entries.values
             .filter { File(dir, it.fileName).isFile }
             .sortedByDescending { it.addedAt }
             .map(::toSong)
     }
-
-    // ---- Persistence ----
-
-    /** Must run under [lock]. */
     private fun persist() {
         val array = JSONArray()
         for (e in entries.values) {
@@ -227,12 +168,8 @@ class DownloadStore private constructor(context: Context) {
                 tmp.delete()
             }
         } catch (e: Exception) {
-            // Disk full or similar: the in-memory list stays right for this session and the next
-            // start rebuilds from whatever the file says.
         }
     }
-
-    /** Must run under [lock]. Rows whose audio file is gone are dropped. */
     private fun load() {
         if (!indexFile.exists()) return
         runCatching {
@@ -256,7 +193,6 @@ class DownloadStore private constructor(context: Context) {
             }
         }
     }
-
     companion object {
         private const val DIR_NAME = "downloads"
         private const val INDEX_NAME = "index.json"
@@ -270,10 +206,8 @@ class DownloadStore private constructor(context: Context) {
         private const val K_COVER = "c"
         private const val K_SIZE = "s"
         private const val K_FORMAT = "fmt"
-
         @Volatile
         private var instance: DownloadStore? = null
-
         fun get(context: Context): DownloadStore =
             instance ?: synchronized(this) {
                 instance ?: DownloadStore(context).also { instance = it }

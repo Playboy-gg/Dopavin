@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,8 +35,6 @@ import com.dopavin.ui.components.ScreenHeader
 import com.dopavin.ui.components.clickableScale
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/** Res label for a mood preset (the enum itself stays UI-free for the unit tests). */
 internal fun moodLabelRes(mood: Mood): Int = when (mood) {
     Mood.Chill -> R.string.mood_chill
     Mood.Happy -> R.string.mood_happy
@@ -46,12 +43,6 @@ internal fun moodLabelRes(mood: Mood): Int = when (mood) {
     Mood.Reflective -> R.string.mood_reflective
     Mood.Romantic -> R.string.mood_romantic
 }
-
-/**
- * S-11. A generated batch (mood queue or song radio): origin title bar, an explicit
- * Play all / Append pair (owner spec §8.2 — replacing the queue is always a user press), and the
- * scored batch as ordinary rows whose subtitle names the strongest reason truthfully.
- */
 @Composable
 fun SuggestionsScreen(
     title: String,
@@ -122,8 +113,6 @@ fun SuggestionsScreen(
         }
     }
 }
-
-/** Play all (fresh queue, explicit press) / Append (bottom of the current queue). */
 @Composable
 private fun ActionPair(actions: MusicActions) {
     val colors = AppTheme.colors

@@ -1,5 +1,4 @@
 package com.kyant.capsule
-
 import androidx.annotation.FloatRange
 import androidx.annotation.IntRange
 import androidx.compose.foundation.shape.CornerBasedShape
@@ -15,7 +14,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import kotlin.math.min
-
 @Immutable
 open class AbsoluteContinuousRoundedRectangle(
     topLeft: CornerSize,
@@ -29,7 +27,6 @@ open class AbsoluteContinuousRoundedRectangle(
     bottomEnd = bottomRight,
     bottomStart = bottomLeft
 ) {
-
     override fun createOutline(
         size: Size,
         topStart: Float,
@@ -38,17 +35,14 @@ open class AbsoluteContinuousRoundedRectangle(
         bottomStart: Float,
         layoutDirection: LayoutDirection
     ): Outline {
-        // rectangle
         if (topStart + topEnd + bottomEnd + bottomStart == 0f) {
             return Outline.Rectangle(size.toRect())
         }
-
         val maxRadius = min(size.width, size.height) * 0.5f
         val topLeft = topStart.fastCoerceIn(0f, maxRadius)
         val topRight = topEnd.fastCoerceIn(0f, maxRadius)
         val bottomRight = bottomEnd.fastCoerceIn(0f, maxRadius)
         val bottomLeft = bottomStart.fastCoerceIn(0f, maxRadius)
-
         return continuity.createRoundedRectangleOutline(
             size = size,
             topLeft = topLeft,
@@ -57,7 +51,6 @@ open class AbsoluteContinuousRoundedRectangle(
             bottomLeft = bottomLeft
         )
     }
-
     override fun copy(
         topStart: CornerSize,
         topEnd: CornerSize,
@@ -72,7 +65,6 @@ open class AbsoluteContinuousRoundedRectangle(
             continuity = continuity
         )
     }
-
     fun copy(
         topLeft: CornerSize = this.topStart,
         topRight: CornerSize = this.topEnd,
@@ -88,20 +80,16 @@ open class AbsoluteContinuousRoundedRectangle(
             continuity = continuity
         )
     }
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is AbsoluteContinuousRoundedRectangle) return false
-
         if (topStart != other.topStart) return false
         if (topEnd != other.topEnd) return false
         if (bottomEnd != other.bottomEnd) return false
         if (bottomStart != other.bottomStart) return false
         if (continuity != other.continuity) return false
-
         return true
     }
-
     override fun hashCode(): Int {
         var result = topStart.hashCode()
         result = 31 * result + topEnd.hashCode()
@@ -110,21 +98,17 @@ open class AbsoluteContinuousRoundedRectangle(
         result = 31 * result + continuity.hashCode()
         return result
     }
-
     override fun toString(): String {
         return "AbsoluteContinuousRoundedRectangle(topLeft=$topStart, topRight=$topEnd, bottomRight=$bottomEnd, " +
                 "bottomLeft=$bottomStart, continuity=$continuity)"
     }
 }
-
 @Stable
 val AbsoluteContinuousRectangle: AbsoluteContinuousRoundedRectangle = AbsoluteContinuousRectangleImpl()
-
 @Suppress("FunctionName")
 @Stable
 fun AbsoluteContinuousRectangle(continuity: Continuity = Continuity.Default): AbsoluteContinuousRoundedRectangle =
     AbsoluteContinuousRectangleImpl(continuity)
-
 @Immutable
 private data class AbsoluteContinuousRectangleImpl(
     override val continuity: Continuity = Continuity.Default
@@ -135,22 +119,17 @@ private data class AbsoluteContinuousRectangleImpl(
     bottomLeft = ZeroCornerSize,
     continuity = continuity
 ) {
-
     override fun toString(): String {
         return "AbsoluteContinuousRectangle(continuity=$continuity)"
     }
 }
-
 private val FullCornerSize = CornerSize(50)
-
 @Stable
 val AbsoluteContinuousCapsule: AbsoluteContinuousRoundedRectangle = AbsoluteContinuousCapsule()
-
 @Suppress("FunctionName")
 @Stable
 fun AbsoluteContinuousCapsule(continuity: Continuity = Continuity.Default): AbsoluteContinuousRoundedRectangle =
     AbsoluteContinuousCapsuleImpl(continuity)
-
 @Immutable
 private data class AbsoluteContinuousCapsuleImpl(
     override val continuity: Continuity = Continuity.Default
@@ -161,7 +140,6 @@ private data class AbsoluteContinuousCapsuleImpl(
     bottomLeft = FullCornerSize,
     continuity = continuity
 ) {
-
     override fun createOutline(
         size: Size,
         topStart: Float,
@@ -170,12 +148,10 @@ private data class AbsoluteContinuousCapsuleImpl(
         bottomStart: Float,
         layoutDirection: LayoutDirection
     ): Outline = continuity.createCapsuleOutline(size)
-
     override fun toString(): String {
         return "AbsoluteContinuousCapsule(continuity=$continuity)"
     }
 }
-
 @Stable
 fun AbsoluteContinuousRoundedRectangle(
     corner: CornerSize,
@@ -188,7 +164,6 @@ fun AbsoluteContinuousRoundedRectangle(
         bottomLeft = corner,
         continuity = continuity
     )
-
 @Stable
 fun AbsoluteContinuousRoundedRectangle(
     size: Dp,
@@ -198,7 +173,6 @@ fun AbsoluteContinuousRoundedRectangle(
         corner = CornerSize(size),
         continuity = continuity
     )
-
 @Stable
 fun AbsoluteContinuousRoundedRectangle(
     @FloatRange(from = 0.0) size: Float,
@@ -208,7 +182,6 @@ fun AbsoluteContinuousRoundedRectangle(
         corner = CornerSize(size),
         continuity = continuity
     )
-
 @Stable
 fun AbsoluteContinuousRoundedRectangle(
     @IntRange(from = 0, to = 100) percent: Int,
@@ -218,7 +191,6 @@ fun AbsoluteContinuousRoundedRectangle(
         corner = CornerSize(percent),
         continuity = continuity
     )
-
 @Stable
 fun AbsoluteContinuousRoundedRectangle(
     topLeft: Dp = 0f.dp,
@@ -234,7 +206,6 @@ fun AbsoluteContinuousRoundedRectangle(
         bottomLeft = CornerSize(bottomLeft),
         continuity = continuity
     )
-
 @Stable
 fun AbsoluteContinuousRoundedRectangle(
     @FloatRange(from = 0.0) topLeft: Float = 0f,
@@ -250,7 +221,6 @@ fun AbsoluteContinuousRoundedRectangle(
         bottomLeft = CornerSize(bottomLeft),
         continuity = continuity
     )
-
 @Stable
 fun AbsoluteContinuousRoundedRectangle(
     @IntRange(from = 0, to = 100) topLeftPercent: Int = 0,

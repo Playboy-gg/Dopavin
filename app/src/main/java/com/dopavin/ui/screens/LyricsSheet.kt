@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -73,15 +72,6 @@ import com.dopavin.ui.components.rememberPlaybackPosition
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import kotlin.math.abs
-
-/**
- * Lyrics panel (shown in place of the artwork on Now Playing). Synced lyrics put the line being sung
- * front and centre: it grows and brightens, the lines around it fall off like a spotlight, and
- * when the provider has word timing the sung words light up one by one (karaoke). Long
- * instrumental gaps show three dots that fill up until the next line. The list follows the song
- * and yields to manual scrolls; any line can be tapped to seek there. Plain lyrics read as text.
- * Loading is keyed on the song and the online-lyrics setting.
- */
 @Composable
 fun LyricsPanel(
     song: Song,
@@ -96,7 +86,6 @@ fun LyricsPanel(
     var sourceDialog by remember { mutableStateOf(false) }
     var syncDialog by remember { mutableStateOf(false) }
     var cardDialog by remember { mutableStateOf(false) }
-
     Column(modifier.fillMaxWidth()) {
         if (shown == LyricsStatus.Found || shown == LyricsStatus.NotFound || shown == LyricsStatus.Failed) {
             LyricsControls(
@@ -151,7 +140,6 @@ fun LyricsPanel(
             }
         }
     }
-
     if (sourceDialog) {
         com.dopavin.ui.components.GlassDialog(
             title = stringResource(R.string.lyrics_source_title),
@@ -211,7 +199,6 @@ fun LyricsPanel(
         }
     }
 }
-
 @Composable
 private fun providerName(id: String): String = stringResource(
     when (id) {
@@ -225,8 +212,6 @@ private fun providerName(id: String): String = stringResource(
         else -> R.string.lyrics_provider_choose
     },
 )
-
-/** Source line ("via LRCLIB · Line-synced") with the source and timing buttons. */
 @Composable
 private fun LyricsControls(
     lyrics: LyricsUi,
@@ -277,14 +262,10 @@ private fun LyricsControls(
         )
     }
 }
-
-/** One entry of the lyrics list: a line, or a count-in gap between two lines. */
 private sealed interface LyricEntry {
     data class Line(val index: Int) : LyricEntry
     data class Gap(val startMs: Long, val endMs: Long) : LyricEntry
 }
-
-/** Lines plus a Gap entry before the first line / after a line when the pause is long. */
 private fun buildEntries(lines: List<LyricLine>): List<LyricEntry> {
     val out = ArrayList<LyricEntry>(lines.size + 4)
     var prevEnd = 0L
@@ -295,7 +276,6 @@ private fun buildEntries(lines: List<LyricLine>): List<LyricEntry> {
     }
     return out
 }
-
 @Composable
 private fun LyricsBody(
     song: Song,
@@ -320,7 +300,6 @@ private fun LyricsBody(
         }
         return
     }
-
     val position = com.dopavin.ui.components.rememberFramePosition(playback.mediaId, playback.isPlaying, actions::position)
     val offset = lyrics.offsetMs
     val lines = lyrics.synced
@@ -328,7 +307,6 @@ private fun LyricsBody(
     val index by remember(lines) {
         derivedStateOf { currentLineIndex(lines, (position.longValue + offset) + LEAD_MS) }
     }
-    // The list row to centre: the current line, or the count-in dots while a long gap plays.
     val focusEntry by remember(entries) {
         derivedStateOf {
             val pos = (position.longValue + offset)
@@ -338,7 +316,6 @@ private fun LyricsBody(
     }
     val listState = rememberLazyListState()
     LaunchedEffect(focusEntry) {
-        // Follow the song, but never fight a scroll the user started; the next change resumes.
         if (focusEntry >= 0 && !listState.isScrollInProgress) {
             listState.animateScrollToItem(focusEntry, scrollOffset = -SCROLL_LEAD_PX)
         }
@@ -349,7 +326,6 @@ private fun LyricsBody(
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .drawWithContent {
                 drawContent()
-                // Fade the list out at the edges (alpha mask, so it works on any background).
                 val top = FADE_TOP_DP.dp.toPx() / size.height
                 val bottom = FADE_BOTTOM_DP.dp.toPx() / size.height
                 drawRect(
@@ -407,12 +383,6 @@ private fun LyricsBody(
         }
     }
 }
-
-/**
- * One timed line. The active line sits at full colour; with word timing its words light up as they
- * are sung (a word fades from dim to full over its own duration). The lines around it are dimmed
- * and scaled down so the eye rests on the line being sung.
- */
 @Composable
 private fun LyricRow(
     line: LyricLine,
@@ -461,19 +431,12 @@ private fun LyricRow(
         )
     }
 }
-
-/**
- * The active line as karaoke text. Word times come from the provider, or are estimated for
- * line-synced lyrics ([Karaoke.words]). Each word sweeps from dim to full character by character
- * with an eased overlap, so the highlight glides along the line instead of switching word by word.
- */
 internal fun karaokeText(
     line: LyricLine,
     nextMs: Long?,
     positionMs: Long,
     sung: Color,
     upcoming: Color,
-    /** Reduce motion: a word turns on as a whole when it starts, no sweep. */
     reduceMotion: Boolean = false,
 ): AnnotatedString {
     val words = com.dopavin.data.Karaoke.words(line, nextMs)
@@ -481,7 +444,6 @@ internal fun karaokeText(
     return buildAnnotatedString {
         words.forEachIndexed { i, w ->
             val progress = com.dopavin.data.wordProgress(w, positionMs)
-            // Pieces, not chars: vowel signs, conjuncts and cursive letters are never split (Hindi, Arabic ...).
             val pieces = com.dopavin.data.Karaoke.units(w.text)
             pieces.forEachIndexed { c, piece ->
                 val p = if (reduceMotion) (if (progress > 0f) 1f else 0f) else com.dopavin.data.Karaoke.charProgress(progress, c, pieces.size)
@@ -491,8 +453,6 @@ internal fun karaokeText(
         }
     }
 }
-
-/** Three dots that fill one after another across a long instrumental gap. */
 @Composable
 private fun GapDots(active: Boolean, progress: Float) {
     val colors = AppTheme.colors
@@ -515,7 +475,6 @@ private fun GapDots(active: Boolean, progress: Float) {
         }
     }
 }
-
 @Composable
 private fun Attribution() {
     AppText(
@@ -527,24 +486,16 @@ private fun Attribution() {
             .padding(horizontal = Dimens.screenEdge, vertical = Dimens.lg),
     )
 }
-
-/** Highlight a line slightly before it is sung, which reads better than lagging behind. */
 private const val LEAD_MS = 300L
 private const val SCROLL_LEAD_PX = 220
-/** Resting weight of the lines just above and below the current one, and of the rest. */
 private const val NEAR_ALPHA = 0.5f
 private const val FAR_ALPHA = 0.28f
 private const val NEAR_SCALE = 0.94f
-/** Count-in dots appear for pauses of at least this long; a line without an end time is assumed this long. */
 private const val GAP_MIN_MS = 6_000L
 private const val LINE_GUESS_MS = 3_000L
-/** One-off decorative sizes (logged in docs/07): lyric type size and the list edge fades. */
 private const val LYRIC_SP = 26
 private const val FADE_TOP_DP = 40
 private const val FADE_BOTTOM_DP = 72
-
-
-/** F-194: pick up to [com.dopavin.ui.components.LYRICS_CARD_MAX_LINES] lines and a style, then share the card as an image. */
 @Composable
 private fun LyricsCardDialog(song: Song, lyrics: LyricsUi, onDismiss: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -638,7 +589,6 @@ private fun LyricsCardDialog(song: Song, lyrics: LyricsUi, onDismiss: () -> Unit
         }
     }
 }
-
 private fun Modifier.checkBoxLook(on: Boolean, accent: androidx.compose.ui.graphics.Color, ink: androidx.compose.ui.graphics.Color): Modifier =
     if (on) {
         this.background(accent, androidx.compose.foundation.shape.CircleShape)

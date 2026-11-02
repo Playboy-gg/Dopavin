@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
@@ -32,11 +31,6 @@ import com.dopavin.ui.components.LocalBottomInset
 import com.dopavin.ui.components.clickableScale
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/**
- * F-133. The Library tab: a short list of the places the user keeps things (playlists, subscriptions,
- * favourites, recently played, downloads). Downloads used to be the tab itself.
- */
 @Composable
 fun LibraryHubScreen(actions: MusicActions) {
     var importDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -81,7 +75,6 @@ fun LibraryHubScreen(actions: MusicActions) {
         }
     }
 }
-
 @Composable
 private fun HubRow(@DrawableRes icon: Int, title: Int, onClick: () -> Unit) {
     val colors = AppTheme.colors

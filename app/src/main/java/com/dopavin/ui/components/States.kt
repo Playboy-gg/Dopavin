@@ -1,5 +1,4 @@
 package com.dopavin.ui.components
-
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -47,16 +46,6 @@ import androidx.compose.ui.unit.dp
 import com.dopavin.R
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/**
- * Centred message with an optional action. Used for empty library, empty search,
- * errors, and the permission screen. Scrolls if it does not fit (large text, landscape).
- *
- * Safe inside a scrolling parent: a scrollable child must never be measured with an unbounded
- * height (Compose throws "Vertically scrollable component was measured with an infinity maximum
- * height constraints"), so the inner scroll is only attached when the incoming height is bounded.
- * Without a bound the message simply takes its natural height (with a sensible minimum).
- */
 @Composable
 fun EmptyState(
     title: String,
@@ -139,8 +128,6 @@ fun EmptyState(
         }
     }
 }
-
-/** Skeleton rows that pulse while the library loads (static with reduce-motion). */
 @Composable
 fun LoadingState(modifier: Modifier = Modifier) {
     val colors = AppTheme.colors
@@ -199,9 +186,6 @@ fun LoadingState(modifier: Modifier = Modifier) {
         }
     }
 }
-
-
-/** A quiet error line with a "Try again" button, so a failed online screen is never a dead end. */
 @Composable
 fun RetryHint(text: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     androidx.compose.foundation.layout.Column(

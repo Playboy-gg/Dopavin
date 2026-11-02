@@ -1,5 +1,4 @@
 package com.dopavin.data
-
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -8,21 +7,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-
-/** What a provider is asked for. Plain data, no Android types, so providers are unit-testable. */
 data class LyricsQuery(
     val title: String,
     val artist: String,
     val album: String,
     val durationSec: Int,
     val videoId: String?,
-    /** The title as the song carries it (brackets and all), kept to tell versions apart (remix, live ...). Blank = same as [title]. */
     val rawTitle: String = "",
-    /** The artist was dropped to widen the search, so a hit must match the title closely (see [LyricsFallback]). */
     val strict: Boolean = false,
 )
-
-/** Lyrics a provider found, with how sure we are that they belong to the requested song. */
 data class LyricsDoc(
     val source: String,
     val lines: List<LyricLine>,
@@ -33,8 +26,6 @@ data class LyricsDoc(
     val kind: LyricsKind? get() = kindOf(lines, plain)
     val usable: Boolean get() = kind != null
 }
-
-/** Everything one provider can answer; failures are values, only cancellation is an exception. */
 sealed interface ProviderOutcome {
     data class Success(val doc: LyricsDoc) : ProviderOutcome
     data class Instrumental(val source: String) : ProviderOutcome
@@ -44,15 +35,11 @@ sealed interface ProviderOutcome {
     data class InvalidResponse(val detail: String?) : ProviderOutcome
     data object Unsupported : ProviderOutcome
 }
-
-/** One lyrics source. [fetch] never throws except for coroutine cancellation. */
 interface LyricsProvider {
     val id: String
     val capabilities: Set<LyricsKind>
     suspend fun fetch(query: LyricsQuery): ProviderOutcome
 }
-
-/** The providers Dopavin really has, with what each one can deliver. */
 object LyricsProviders {
     const val CHOOSE = "choose"
     const val BETTER = "better"
@@ -62,9 +49,7 @@ object LyricsProviders {
     const val UNISON = "unison"
     const val KUGOU = "kugou"
     const val LRCRED = "lrcred"
-
     val all: List<String> = listOf(LRCRED, BETTER, PORTATO, LYRICSPLUS, UNISON, KUGOU, LRCLIB)
-
     fun capabilities(id: String): Set<LyricsKind> = when (id) {
         BETTER -> setOf(LyricsKind.WordSynced, LyricsKind.LineSynced)
         LRCRED -> setOf(LyricsKind.WordSynced, LyricsKind.LineSynced)
@@ -75,22 +60,13 @@ object LyricsProviders {
         KUGOU -> setOf(LyricsKind.LineSynced)
         else -> emptySet()
     }
-
-    /** Providers that answer nothing without an artist, so artist-less fallback queries skip them. */
     fun needsArtist(id: String): Boolean = id == LYRICSPLUS || id == UNISON || id == LRCRED
-
-    /** Stored selections that no longer exist fall back to the race. */
     fun normalise(selection: String?): String = if (selection != null && selection in all) selection else CHOOSE
 }
-
-/** HTTP seam so providers can be tested with fake replies. */
 data class HttpReply(val code: Int, val body: String)
-
 interface LyricsHttp {
-    /** Throws [IOException] when the network fails; HTTP error codes are returned, not thrown. */
     suspend fun get(url: String, timeoutMs: Int): HttpReply
 }
-
 class UrlConnectionHttp : LyricsHttp {
     override suspend fun get(url: String, timeoutMs: Int): HttpReply = withContext(Dispatchers.IO) {
         val conn = URL(url).openConnection() as HttpURLConnection
@@ -107,10 +83,7 @@ class UrlConnectionHttp : LyricsHttp {
         }
     }
 }
-
 internal fun enc(value: String) = URLEncoder.encode(value, "UTF-8")
-
-/** Runs [block] mapping IO failures to a [ProviderOutcome.NetworkError]. Cancellation passes through. */
 internal suspend inline fun guarded(block: () -> ProviderOutcome): ProviderOutcome = try {
     block()
 } catch (e: CancellationException) {
@@ -120,12 +93,6 @@ internal suspend inline fun guarded(block: () -> ProviderOutcome): ProviderOutco
 } catch (e: Exception) {
     ProviderOutcome.InvalidResponse(e.javaClass.simpleName)
 }
-
-/**
- * Better Lyrics (https://api.betterlyrics.org, the Better Lyrics extension's public API): answers
- * JSON with a `ttml` field that carries word/syllable timing. Per its docs a keyless cache miss
- * replies 401 and a request missing song and artist replies 422 - both are "no lyrics here".
- */
 class BetterLyricsProvider(
     private val http: LyricsHttp,
     private val baseUrl: String = "https://api.betterlyrics.org",
@@ -136,7 +103,6 @@ class BetterLyricsProvider(
     private val sendVideoId: Boolean = true,
 ) : LyricsProvider {
     override val capabilities = LyricsProviders.capabilities(id)
-
     override suspend fun fetch(query: LyricsQuery): ProviderOutcome = guarded {
         if (query.title.isBlank()) return@guarded ProviderOutcome.NotFound
         val url = buildString {
@@ -158,7 +124,6 @@ class BetterLyricsProvider(
             else -> parse(query, reply.body)
         }
     }
-
     internal fun parse(query: LyricsQuery, body: String): ProviderOutcome {
         val raw = body.removePrefix("\uFEFF").trim()
         val ttml = if (raw.startsWith("<")) {
@@ -171,21 +136,12 @@ class BetterLyricsProvider(
         val lines = parseTtml(ttml)
         if (lines.isEmpty()) return ProviderOutcome.InvalidResponse("no lines")
         if (!LyricsMatcher.timingFits(lines, query.durationSec)) return ProviderOutcome.InvalidResponse("timing")
-        // The service matches by song/artist/duration itself and returns no metadata to compare.
         return ProviderOutcome.Success(LyricsDoc(id, lines, null, BETTER_CONFIDENCE))
     }
-
     private companion object {
         const val BETTER_CONFIDENCE = 0.8f
     }
 }
-
-/**
- * LRCLIB (https://lrclib.net/api, free, no key): exact `get` lookups then loose `search`, every hit
- * checked against the requested song (title, artist, duration) before it can win. Synced lyrics
- * (LRC, sometimes enhanced with word timing) are preferred over plain text. It answers 503 under
- * load; one retry, then the outcome is [ProviderOutcome.RateLimited] (never "not found").
- */
 class LrclibProvider(
     private val http: LyricsHttp,
     private val baseUrl: String = "https://lrclib.net/api",
@@ -194,13 +150,11 @@ class LrclibProvider(
 ) : LyricsProvider {
     override val id = LyricsProviders.LRCLIB
     override val capabilities = LyricsProviders.capabilities(id)
-
     private sealed interface Step {
         data class Hit(val body: String) : Step
         data object Miss : Step
         data class Busy(val code: Int) : Step
     }
-
     private suspend fun call(url: String): Step {
         var reply = http.get(url, timeoutMs)
         if (reply.code == 429 || reply.code in 500..599) {
@@ -213,13 +167,11 @@ class LrclibProvider(
             else -> Step.Busy(reply.code)
         }
     }
-
     override suspend fun fetch(query: LyricsQuery): ProviderOutcome = guarded {
         if (query.title.isBlank()) return@guarded ProviderOutcome.NotFound
         var busy: Int? = null
         fun consider(json: Map<String, Any?>): ProviderOutcome? =
             toOutcome(query, json).takeIf { it is ProviderOutcome.Success || it is ProviderOutcome.Instrumental }
-
         if (query.artist.isNotBlank()) {
             val withAlbum = buildString {
                 append(baseUrl).append("/get?track_name=").append(enc(query.title))
@@ -254,7 +206,6 @@ class LrclibProvider(
             val hits = MiniJson.list(MiniJson.parse(body)) ?: continue
             val candidates = hits.mapNotNull { MiniJson.obj(it) }
                 .mapNotNull { json -> (toOutcome(query, json) as? ProviderOutcome.Success)?.doc }
-            // Best match first; a synced hit beats a plain one with similar confidence.
             val best = candidates.maxWithOrNull(
                 compareBy<LyricsDoc>({ rank(it.kind) }, { it.confidence }),
             )
@@ -263,15 +214,12 @@ class LrclibProvider(
         val code = busy
         if (code != null) ProviderOutcome.RateLimited(code) else ProviderOutcome.NotFound
     }
-
     private fun rank(kind: LyricsKind?) = when (kind) {
         LyricsKind.WordSynced -> 3
         LyricsKind.LineSynced -> 2
         LyricsKind.Plain -> 1
         null -> 0
     }
-
-    /** One LRCLIB record to an outcome; a record of another song is [ProviderOutcome.InvalidResponse]. */
     internal fun toOutcome(query: LyricsQuery, json: Map<String, Any?>): ProviderOutcome {
         val confidence = LyricsMatcher.score(
             query,
@@ -287,39 +235,25 @@ class LrclibProvider(
         return ProviderOutcome.Success(LyricsDoc(id, lines, plain, confidence))
     }
 }
-
-/** Decides whether a provider's answer is about the song that was asked for. */
 object LyricsMatcher {
     private val noise = Regex("""[\(\[][^)\]]*[\)\]]""")
     private val feat = Regex("""(?i)\s+(feat\.?|ft\.?)\s+.*$""")
     private val nonWord = Regex("""[^\p{L}\p{N}]+""")
-
     fun normalise(s: String): String =
         s.replace(noise, " ").replace(feat, "").lowercase().replace(nonWord, " ").trim()
-
     private val VERSION_WORDS = Regex(
         """(?i)\b(remix|live|acoustic|instrumental|karaoke|cover|unplugged|mashup|reprise|slowed|reverb|sped\s*up|lofi|lo-fi|remaster(?:ed)?|demo)\b""",
     )
     private val HARD_VERSIONS = setOf("remix", "instrumental", "karaoke", "cover", "mashup", "slowed", "reverb", "sped up", "spedup", "lofi", "lo-fi")
-
-    /** Version words in a raw title ("Song (Live)", "Song - Remix"), lower-cased. */
     fun versionTags(raw: String): Set<String> =
         VERSION_WORDS.findAll(raw).map { it.value.lowercase().replace(Regex("\\s+"), " ").let { v -> if (v.startsWith("remaster")) "remaster" else v } }.toSet()
-
-    /** "love" inside "love story" is another song; a longer shared title ("tum hi ho" in "tum hi ho aashiqui 2") is the same one. */
     private fun containmentIsClose(a: String, b: String): Boolean {
         val short = if (a.length <= b.length) a else b
         val long = if (a.length <= b.length) b else a
         val shortWords = short.split(' ').size
         return shortWords >= 2 && short.length * 10 >= long.length * 4
     }
-
     private fun tokens(s: String): Set<String> = normalise(s).split(' ').filter { it.length > 1 }.toSet()
-
-    /**
-     * Confidence 0..1 that a record (title, artist, duration in seconds; any may be null when the
-     * source does not say) is the requested song, or null when it clearly is not.
-     */
     fun score(q: LyricsQuery, title: String?, artist: String?, durationSec: Double?): Float? {
         var score = 0f
         if (title != null) {
@@ -331,7 +265,6 @@ object LyricsMatcher {
                 (a.contains(b) || b.contains(a)) && minOf(a.length, b.length) >= 3 && containmentIsClose(a, b) -> 0.35f
                 else -> return null
             }
-            // A remix, karaoke or cover is another recording: its lyrics must not stand in for the original, and the other way round.
             val versions = versionTags(q.rawTitle.ifBlank { q.title })
             val theirs = versionTags(title)
             if (theirs.any { it in HARD_VERSIONS && it !in versions }) return null
@@ -360,14 +293,11 @@ object LyricsMatcher {
         }
         return score.coerceIn(0f, 1f)
     }
-
-    /** Timed lyrics cannot run (much) longer than the song; otherwise they belong to another one. */
     fun timingFits(lines: List<LyricLine>, durationSec: Int): Boolean {
         if (durationSec <= 0) return true
         val first = lines.firstOrNull()?.timeMs ?: return false
         return first <= durationSec * 1000L && lines.last().timeMs <= durationSec * 1000L + TIMING_SLACK_MS
     }
-
     private const val DURATION_REJECT_S = 8.0
     private const val TIMING_SLACK_MS = 15_000L
 }

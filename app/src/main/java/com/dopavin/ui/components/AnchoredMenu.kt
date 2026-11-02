@@ -1,5 +1,4 @@
 package com.dopavin.ui.components
-
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -63,43 +62,22 @@ import com.kyant.capsule.ContinuousRoundedRectangle
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
-
-/**
- * Where the last tap or long-press happened (window coordinates of the pressed element). Every
- * button in the app goes through `clickableScale`, which records here just before it calls its
- * handler, so a menu opened by that handler can appear next to the button that opened it. A record
- * older than [MAX_AGE_MS] is ignored (the menu then opens centred instead of next to a stale spot).
- */
 object MenuAnchor {
     private const val MAX_AGE_MS = 2_000L
     private var bounds: Rect? = null
     private var at = 0L
-
     fun record(coords: LayoutCoordinates?) {
         if (coords != null && coords.isAttached) {
             bounds = coords.boundsInWindow()
             at = SystemClock.uptimeMillis()
         }
     }
-
     fun fresh(): Rect? = bounds?.takeIf { SystemClock.uptimeMillis() - at < MAX_AGE_MS }
 }
-
-/** Remembers the latest layout of a node without allocating on every frame. */
 internal class CoordsHolder {
     var coords: LayoutCoordinates? = null
 }
-
-/** The text/icon colour of the menu card (white/black on glass, theme text colour on the solid card). */
 val LocalMenuInk = staticCompositionLocalOf { Color.Unspecified }
-
-/**
- * The app's one dropdown (replaces every bottom "more" sheet). A Kyant0 continuous-rounded card that
- * opens just below [anchor] (the button's bounds), or just above it when there is no room below, and
- * stays beside the button either way. With Liquid Glass on it is the same blurred lens card as the
- * dialogs; with glass off it is a solid themed card with a hairline edge. Tap outside or Back closes.
- * Without an [anchor] the card is centred.
- */
 @Composable
 fun AnchoredMenu(
     anchor: Rect?,
@@ -120,15 +98,12 @@ fun AnchoredMenu(
     val progress = remember { Animatable(0f) }
     val openMs = AppTheme.motion.short
     LaunchedEffect(Unit) { progress.animateTo(1f, tween(openMs)) }
-
     BackHandler(onBack = onDismiss)
-
     Box(
         modifier
             .fillMaxSize()
             .onGloballyPositioned { origin = it.positionInWindow() },
     ) {
-        // Scrim: light, only to separate the menu from the screen and to catch outside taps.
         Box(
             Modifier
                 .fillMaxSize()
@@ -168,7 +143,6 @@ fun AnchoredMenu(
                                         .border(1.dp, colors.divider, shape)
                                 },
                             )
-                            // Taps inside the card must not reach the scrim.
                             .clickable(interactionSource = noRipple, indication = null, onClick = {})
                             .verticalScroll(rememberScrollState())
                             .padding(vertical = 6.dp),
@@ -208,8 +182,6 @@ fun AnchoredMenu(
         }
     }
 }
-
-/** A menu row: capsule highlight while pressed, icon + label. [destructive] uses the error colour. */
 @Composable
 fun AnchoredMenuItem(
     label: String,

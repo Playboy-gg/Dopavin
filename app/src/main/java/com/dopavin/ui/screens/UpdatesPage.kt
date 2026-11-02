@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,13 +38,6 @@ import com.dopavin.ui.components.TonalButton
 import com.dopavin.ui.components.ToggleRow
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/**
- * F-207: the "Updates" settings category. When a newer release exists the page is the update screen itself:
- * version, size, the release notes and every update button (download with progress, cancel, install, retry).
- * Otherwise it shows the check result with "Check for updates" and the automatic-check switch.
- * [match] filters rows while Settings search is active; the big update block only shows on the real page.
- */
 @Composable
 fun UpdatesPage(actions: MusicActions, autoUpdateCheck: Boolean, match: (String) -> Boolean) {
     val update = LocalUpdate.current
@@ -57,7 +49,6 @@ fun UpdatesPage(actions: MusicActions, autoUpdateCheck: Boolean, match: (String)
     val autoLabel = stringResource(R.string.update_auto)
     val fullPage = match("")
     val release = update.release
-
     Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.screenEdge)) {
         if (fullPage) {
             if (update.status == UpdateStatus.Available && release != null) {
@@ -88,8 +79,6 @@ fun UpdatesPage(actions: MusicActions, autoUpdateCheck: Boolean, match: (String)
         )
     }
 }
-
-/** Nothing newer: the installed version and the outcome of the last check. */
 @Composable
 private fun IdleBlock(status: UpdateStatus, installed: String) {
     val colors = AppTheme.colors
@@ -119,8 +108,6 @@ private fun IdleBlock(status: UpdateStatus, installed: String) {
         }
     }
 }
-
-/** A newer release: header, the one action that fits the download step, then the release notes. */
 @Composable
 private fun AvailableBlock(
     step: UpdateStep,
@@ -148,7 +135,6 @@ private fun AvailableBlock(
             AppText(meta, AppTheme.type.caption, color = colors.textSecondary, modifier = Modifier.padding(top = Dimens.xs))
         }
         Spacer(Modifier.height(Dimens.xl))
-
         when (step) {
             UpdateStep.None, UpdateStep.Failed -> {
                 if (step == UpdateStep.Failed && errorRes != 0) {
@@ -224,7 +210,6 @@ private fun AvailableBlock(
                 )
             }
         }
-
         val lines = remember(release.notes) { UpdateCheck.plainNotes(release.notes) }
         Spacer(Modifier.height(Dimens.xl))
         AppText(
@@ -261,7 +246,6 @@ private fun AvailableBlock(
         }
     }
 }
-
 @Composable
 private fun Hero(icon: Int) {
     val colors = AppTheme.colors
@@ -272,8 +256,6 @@ private fun Hero(icon: Int) {
         Icon(painterResource(icon), contentDescription = null, tint = colors.accent, modifier = Modifier.size(32.dp))
     }
 }
-
-/** "12.3 MB"; sizes below 1 MB are shown in KB. */
 private fun sizeText(bytes: Long): String {
     val mb = bytes / (1024.0 * 1024.0)
     return if (mb >= 1.0) String.format(java.util.Locale.getDefault(), "%.1f MB", mb)

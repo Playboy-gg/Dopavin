@@ -1,5 +1,4 @@
 package com.dopavin.playback
-
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -19,29 +18,16 @@ import com.google.common.util.concurrent.SettableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlinx.coroutines.runBlocking
-
-/**
- * F-222: what Android Auto (and any other media browser, e.g. Bluetooth car screens) can browse:
- * Recently played, Favourites and Playlists. Songs are the same ones the app plays; a tapped song is turned
- * back into a full playable item in [onAddMediaItems] (browsers only send the id).
- *
- * Unverified: needs a car or the Desktop Head Unit to see it. Not run in the sandbox.
- */
 class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Callback {
-
     private val app = context.applicationContext
     private val worker = Executors.newSingleThreadExecutor()
-
-    /** Everything shown in a browse list, by media id, so a tap can be resolved to the real song. */
     private val catalog = ConcurrentHashMap<String, Song>()
-
     override fun onGetLibraryRoot(
         session: MediaLibraryService.MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
         params: MediaLibraryService.LibraryParams?,
     ): ListenableFuture<LibraryResult<MediaItem>> =
         Futures.immediateFuture(LibraryResult.ofItem(folder(ROOT, app.getString(R.string.app_name)), params))
-
     override fun onGetItem(
         session: MediaLibraryService.MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
@@ -60,7 +46,6 @@ class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Ca
             if (item != null) LibraryResult.ofItem(item, null) else LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE),
         )
     }
-
     override fun onGetChildren(
         session: MediaLibraryService.MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
@@ -82,8 +67,6 @@ class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Ca
         }
         return future
     }
-
-    /** A browser sends only ids; this fills in the playable address and metadata of songs we listed. */
     override fun onAddMediaItems(
         mediaSession: MediaSession,
         controller: MediaSession.ControllerInfo,
@@ -92,7 +75,6 @@ class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Ca
         Futures.immediateFuture(
             mediaItems.map { item -> catalog[item.mediaId]?.toMediaItem() ?: item }.toMutableList(),
         )
-
     private fun children(parentId: String): List<MediaItem> = when {
         parentId == ROOT -> listOf(
             folder(RECENT, app.getString(R.string.auto_recent)),
@@ -109,19 +91,16 @@ class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Ca
             songs(runBlocking { PlaylistStore(app).load(parentId.removePrefix(PL_PREFIX)) }?.songs.orEmpty().take(LIST_LIMIT))
         else -> emptyList()
     }
-
     private fun songs(list: List<Song>): List<MediaItem> = list.map { song ->
         catalog[song.id.toString()] = song
         playable(song)
     }
-
     private fun playable(song: Song): MediaItem {
         val item = song.toMediaItem()
         return item.buildUpon()
             .setMediaMetadata(item.mediaMetadata.buildUpon().setIsBrowsable(false).setIsPlayable(true).build())
             .build()
     }
-
     private fun folder(id: String, title: String): MediaItem =
         MediaItem.Builder()
             .setMediaId(id)
@@ -134,7 +113,6 @@ class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Ca
                     .build(),
             )
             .build()
-
     private companion object {
         const val ROOT = "root"
         const val RECENT = "recent"

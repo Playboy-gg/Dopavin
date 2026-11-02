@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -38,8 +37,6 @@ import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import java.text.DateFormat
 import java.util.Date
-
-/** Debug builds only: every crash this build had, newest first. Tap one to read, copy, share or delete it. */
 @Composable
 fun CrashLogScreen(actions: MusicActions) {
     val context = LocalContext.current

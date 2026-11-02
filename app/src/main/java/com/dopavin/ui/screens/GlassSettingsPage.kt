@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -35,23 +34,20 @@ import com.dopavin.ui.glass.backdrop.backdrops.rememberLayerBackdrop
 import com.dopavin.ui.glass.glassSurface
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
 private fun AppSettings.withPreset(index: Int): AppSettings = when (index) {
-    0 -> copy( // Subtle
+    0 -> copy(
         glassBlur = 24, glassLensHeight = 6, glassRefraction = 25, glassTint = 30,
         glassSaturation = 120, glassHighlight = 40, glassShadow = 30, glassQuality = 60, glassDispersion = false,
     )
-    2 -> copy( // Crystal
+    2 -> copy(
         glassBlur = 8, glassLensHeight = 20, glassRefraction = 80, glassTint = 8,
         glassSaturation = 170, glassHighlight = 90, glassShadow = 50, glassQuality = 80, glassDispersion = false,
     )
-    else -> copy( // Balanced = defaults
+    else -> copy(
         glassBlur = 16, glassLensHeight = 12, glassRefraction = 50, glassTint = 18,
         glassSaturation = 150, glassHighlight = 60, glassShadow = 40, glassQuality = 60, glassDispersion = false,
     )
 }
-
-/** "Liquid glass" settings: master switch, presets, a live preview and one slider per parameter. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GlassSettingsPage(
@@ -74,7 +70,6 @@ fun GlassSettingsPage(
         Note(stringResource(R.string.settings_glass_no_lens))
     }
     GlassPreview()
-
     AppText(
         stringResource(R.string.settings_glass_presets),
         AppTheme.type.bodyStrong,
@@ -89,7 +84,6 @@ fun GlassSettingsPage(
         SelectChip(stringResource(R.string.glass_preset_balanced), false, onClick = { actions.updateGlass { it.withPreset(1) } })
         SelectChip(stringResource(R.string.glass_preset_crystal), false, onClick = { actions.updateGlass { it.withPreset(2) } })
     }
-
     GlassSlider(R.string.settings_glass_blur, settings.glassBlur, 0..40, "dp") { v -> actions.updateGlass { it.copy(glassBlur = v) } }
     GlassSlider(R.string.settings_glass_lens, settings.glassLensHeight, 0..32, "dp") { v -> actions.updateGlass { it.copy(glassLensHeight = v) } }
     GlassSlider(R.string.settings_glass_refraction, settings.glassRefraction, 0..100, "%") { v -> actions.updateGlass { it.copy(glassRefraction = v) } }
@@ -98,7 +92,6 @@ fun GlassSettingsPage(
     GlassSlider(R.string.settings_glass_highlight, settings.glassHighlight, 0..100, "%") { v -> actions.updateGlass { it.copy(glassHighlight = v) } }
     GlassSlider(R.string.settings_glass_shadow, settings.glassShadow, 0..100, "%") { v -> actions.updateGlass { it.copy(glassShadow = v) } }
     GlassSlider(R.string.settings_glass_quality, settings.glassQuality, 40..100, "%") { v -> actions.updateGlass { it.copy(glassQuality = v) } }
-
     ToggleRow(
         title = stringResource(R.string.settings_glass_dispersion),
         checked = settings.glassDispersion,
@@ -112,7 +105,6 @@ fun GlassSettingsPage(
     }
     Note(stringResource(R.string.settings_glass_credit))
 }
-
 @Composable
 private fun GlassSlider(label: Int, value: Int, range: IntRange, unit: String, onChange: (Int) -> Unit) {
     val text = stringResource(label)
@@ -126,7 +118,6 @@ private fun GlassSlider(label: Int, value: Int, range: IntRange, unit: String, o
         )
     }
 }
-
 @Composable
 private fun Column2(title: String, valueText: String, content: @Composable () -> Unit) {
     androidx.compose.foundation.layout.Column(
@@ -139,8 +130,6 @@ private fun Column2(title: String, valueText: String, content: @Composable () ->
         content()
     }
 }
-
-/** Colourful strip with a glass pill on top, so slider changes are visible immediately. */
 @Composable
 private fun GlassPreview() {
     val colors = AppTheme.colors
@@ -177,7 +166,6 @@ private fun GlassPreview() {
         }
     }
 }
-
 @Composable
 private fun Note(text: String) {
     AppText(

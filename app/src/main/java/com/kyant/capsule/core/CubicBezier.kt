@@ -1,8 +1,6 @@
 package com.kyant.capsule.core
-
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-
 @Immutable
 data class CubicBezier(
     val p0: Point,
@@ -10,7 +8,6 @@ data class CubicBezier(
     val p2: Point,
     val p3: Point
 ) {
-
     @Stable
     operator fun times(operand: Double): CubicBezier {
         return CubicBezier(

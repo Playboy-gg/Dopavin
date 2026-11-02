@@ -1,5 +1,4 @@
 package com.dopavin.data
-
 import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.CancellationException
@@ -29,31 +28,13 @@ import org.schabi.newpipe.extractor.stream.StreamType
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-
-/**
- * YouTube Music search and live streams via NewPipe Extractor (which wraps InnerTube). Owner
- * approved 2026-10-19; see docs/01. Only what a search needs leaves the device: the query words.
- *
- * Search results map to [Song] with a stable id derived from the video id, so queue ids keep
- * working. Song list metadata is cached in a small preferences file so a restored queue can
- * recreate online rows without network. Stream urls are never cached; they are resolved fresh
- * every time playback loads a song (they are short-lived).
- */
 class OnlineRepository(context: Context) {
-
     private val prefs = context.applicationContext
         .getSharedPreferences("online", Context.MODE_PRIVATE)
-
-    /** In-memory mirror of [persistMetadata]; the source of truth for restore. */
     private val memory = HashMap<String, Song>()
-
     init {
         synchronized(memory) { loadMetadata() }
     }
-
-    // ---- Search ----
-
-    /** Where the next page of a search continues (kept in memory only). */
     class SearchCursor internal constructor(
         internal val query: String,
         internal val handler: org.schabi.newpipe.extractor.linkhandler.SearchQueryHandler,
@@ -61,18 +42,10 @@ class OnlineRepository(context: Context) {
     ) {
         val forQuery: String get() = query
     }
-
-    /** One ranked page of search results and, when YouTube has more, where to continue. */
     class SearchPage(val songs: List<Song>, val more: SearchCursor?)
-
-    /** YouTube Music search results as songs, capped at [limit]. Throws when nothing could be fetched. */
     suspend fun search(query: String, limit: Int = 10): List<Song> = searchPage(query).songs.take(limit)
-
-    /** The whole first page of results (not capped), plus a cursor for [searchMore]. Throws when nothing could be fetched. */
     suspend fun searchPage(query: String): SearchPage = withContext(Dispatchers.IO) {
         init()
-        // There is no separate YouTube Music StreamingService; music results come from the plain
-        // YouTube service with the MUSIC_SONGS content filter (InnerTube music search).
         val service = ServiceList.YouTube
         val handler = service.getSearchQHFactory().fromQuery(
             query,
@@ -81,9 +54,6 @@ class OnlineRepository(context: Context) {
         )
         val info = SearchInfo.getInfo(service, handler)
         var items: List<org.schabi.newpipe.extractor.InfoItem> = info.relatedItems
-        // The "Songs" shelf only holds catalogued tracks: a release of the last days is usually
-        // there only as a video. The plain video search is added (official uploaders only, never
-        // twice the same title) so new songs are found too. Its failure never hides the songs.
         try {
             val videoHandler = service.getSearchQHFactory()
                 .fromQuery(query, listOf(YoutubeSearchQueryHandlerFactory.VIDEOS), "")
@@ -100,14 +70,11 @@ class OnlineRepository(context: Context) {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // keep the songs
         }
         val songs = rankSearchItems(items, query)
         val next = info.nextPage
         SearchPage(songs, nextCursor(query, handler, next))
     }
-
-    /** The page after [cursor]. Throws when it could not be fetched (the caller keeps the cursor to retry). */
     suspend fun searchMore(cursor: SearchCursor): SearchPage = withContext(Dispatchers.IO) {
         init()
         val more = SearchInfo.getMoreItems(ServiceList.YouTube, cursor.handler, cursor.page)
@@ -115,17 +82,13 @@ class OnlineRepository(context: Context) {
         val next = more.nextPage
         SearchPage(songs, nextCursor(cursor.query, cursor.handler, next))
     }
-
     private fun nextCursor(
         query: String,
         handler: org.schabi.newpipe.extractor.linkhandler.SearchQueryHandler,
         next: org.schabi.newpipe.extractor.Page?,
     ): SearchCursor? =
         if (next != null && (!next.url.isNullOrEmpty() || !next.ids.isNullOrEmpty())) SearchCursor(query, handler, next) else null
-
     private fun rankSearchItems(items: List<org.schabi.newpipe.extractor.InfoItem>, query: String): List<Song> {
-        // Genuine uploaders (verified / Topic / VEVO / Official) come first; small re-upload
-        // channels are demoted, not dropped, so a rare song that only they have is still found.
         val found = ArrayList<Pair<Song, Int>>()
         for (item in items) {
             if (item !is StreamInfoItem) continue
@@ -133,16 +96,12 @@ class OnlineRepository(context: Context) {
             if (found.any { it.first.id == song.id }) continue
             found += song to ArtistPick.uploaderTier(item.uploaderName.orEmpty(), item.isUploaderVerified)
         }
-        // Originals before remix/live/karaoke (unless asked for), then the same recording shown
-        // twice is merged. Nothing is hidden because of its uploader.
         val ranked = TrackMatch.rank(found, query, { it.first.title }) { it.second }.map { it.first }
         val songs = TrackMatch.dedupe(ranked, { it.title }, { it.artist }, { it.durationMs })
         for (song in songs) synchronized(memory) { song.videoId?.let { memory[it] = song } }
         persistMetadata()
         return songs
     }
-
-    /** Channel hits for [query] (YouTube Music artist filter, plain channel search as fallback). Empty on failure. */
     suspend fun searchArtists(query: String, limit: Int = 6): List<ArtistPick.Hit> = withContext(Dispatchers.IO) {
         init()
         val service = ServiceList.YouTube
@@ -167,11 +126,6 @@ class OnlineRepository(context: Context) {
         val hits = run(YoutubeSearchQueryHandlerFactory.MUSIC_ARTISTS).ifEmpty { run(YoutubeSearchQueryHandlerFactory.CHANNELS) }
         ArtistPick.rank(query, hits).take(limit)
     }
-
-    /**
-     * The genuine channel of [artist]: remembered, else the best name-matching verified/large
-     * channel of a channel search. Null when none carries the name (callers then keep the uploader).
-     */
     suspend fun genuineChannel(artist: String): ArtistIdentity? = withContext(Dispatchers.IO) {
         directory.get(artist)?.takeIf { it.channelUrl.isNotBlank() }?.let { return@withContext it }
         val pick = ArtistPick.best(artist, searchArtists(artist, 10)) ?: return@withContext null
@@ -179,8 +133,6 @@ class OnlineRepository(context: Context) {
         directory.put(artist, found)
         found
     }
-
-    /** Related tracks of a watch page (owner F-87). Empty on failure - shelves hide silently. */
     suspend fun related(videoId: String, limit: Int = 10): List<Song> = withContext(Dispatchers.IO) {
         init()
         val info = try {
@@ -202,27 +154,23 @@ class OnlineRepository(context: Context) {
         persistMetadata()
         songs
     }
-
-    /** One search/related hit as a Song; null for anything the player should never see. */
     private fun toSong(item: StreamInfoItem): Song? {
         val type = item.streamType
         if (type != StreamType.VIDEO_STREAM && type != StreamType.AUDIO_STREAM) return null
         if (item.isShortFormContent) return null
         val seconds = item.duration
-        if (seconds <= 0) return null // live or unknown
+        if (seconds <= 0) return null
         if (seconds < MIN_SECONDS) return null
         val videoId = Uri.parse(item.url.orEmpty()).getQueryParameter(VIDEO_ID_PARAM)
             .takeUnless { it.isNullOrBlank() } ?: return null
         val rawTitle = item.name.orEmpty().trim()
         if (rawTitle.isBlank()) return null
-        // Uploader noise ("(Official Music Video)", "| T-Series", "Artist - " prefix) is cut off the shown title.
         val title = TrackNames.clean(rawTitle, item.uploaderName.orEmpty())
         return Song(
             id = stableOnlineId(videoId),
             title = title,
-            // The channel name exactly as NewPipe reports it (only the auto-generated " - Topic" tag is dropped).
             artist = item.uploaderName.orEmpty().replace(Regex("""(?i)\s*-\s*topic$"""), "").trim(),
-            album = "", // resolved differently per surface; the search screen supplies its own line
+            album = "",
             albumKey = UNKNOWN_ALBUM_KEY,
             durationMs = seconds * 1000L,
             dateAdded = 0L,
@@ -233,10 +181,6 @@ class OnlineRepository(context: Context) {
             channelUrl = item.uploaderUrl?.takeIf { it.isNotBlank() },
         )
     }
-
-    // ---- Channels (subscriptions, F-129) ----
-
-    /** Name, url and avatar of a channel, or null when it cannot be read. */
     suspend fun channelInfo(url: String): Subscription? = withContext(Dispatchers.IO) {
         init()
         try {
@@ -255,11 +199,6 @@ class OnlineRepository(context: Context) {
             null
         }
     }
-
-    /**
-     * Latest uploads of a channel as songs, newest first (the extractor lists the VIDEOS tab that
-     * way). Falls back to the TRACKS tab, then the first tab. Empty on any failure.
-     */
     suspend fun channelUploads(url: String, limit: Int = 12, fallbackName: String = ""): List<Song> =
         withContext(Dispatchers.IO) {
             init()
@@ -275,10 +214,8 @@ class OnlineRepository(context: Context) {
                 for (item in items) {
                     if (songs.size >= limit) break
                     if (item !is StreamInfoItem) continue
-                    // The channel's VIDEOS tab also holds interviews, vlogs, trailers and compilations.
                     if (!TrackNames.looksLikeSong(item.name.orEmpty(), item.duration)) continue
                     val base = toSong(item) ?: continue
-                    // Channel tab items often carry no uploader of their own.
                     val artist = base.artist.ifBlank { info.name.orEmpty().ifBlank { fallbackName } }
                     val song = base.copy(
                         title = TrackNames.clean(item.name.orEmpty(), artist),
@@ -297,19 +234,8 @@ class OnlineRepository(context: Context) {
                 emptyList()
             }
         }
-
-    // ---- Artist identity (F-136) ----
-
     private val directory by lazy { ArtistDirectory(context) }
-
-    /** The remembered channel + avatar of an artist name, without any network. */
     fun peekIdentity(name: String): ArtistIdentity? = directory.get(name)
-
-    /**
-     * Channel url and real profile picture of an artist: the remembered one, else from the channel
-     * page when [channelHint] is known, else the first matching channel of a YouTube channel search.
-     * Null when nothing was found or the network failed.
-     */
     suspend fun artistIdentity(name: String, channelHint: String? = null): ArtistIdentity? =
         withContext(Dispatchers.IO) {
             directory.get(name)?.takeIf { it.avatar != null }?.let { return@withContext it }
@@ -330,7 +256,7 @@ class OnlineRepository(context: Context) {
                     val wanted = name.trim().lowercase()
                     val pick = channels.firstOrNull {
                         it.name.orEmpty().lowercase().removeSuffix(" - topic").trim() == wanted
-                    } ?: return@withContext directory.get(name) // no exact-name channel: better none than a wrong artist
+                    } ?: return@withContext directory.get(name)
                     ArtistIdentity(
                         pick.name.orEmpty().ifBlank { name },
                         pick.url.orEmpty(),
@@ -346,25 +272,13 @@ class OnlineRepository(context: Context) {
                 directory.get(name)
             }
         }
-
-    // ---- Artist page (F-133) ----
-
-    /** One album / release of an artist page; [url] is a playlist url. */
     data class ArtistAlbum(val name: String, val url: String, val thumb: String?)
-
-    /** An artist (channel) page: header image, their songs (newest first) and their albums. */
     data class ArtistPage(
         val name: String,
         val avatar: String?,
         val songs: List<Song>,
         val albums: List<ArtistAlbum>,
     )
-
-    /**
-     * Everything one artist page shows: the channel's avatar, its VIDEOS (else TRACKS) tab as songs
-     * and its ALBUMS (else PLAYLISTS) tab as albums. First page of each tab only. Null when the
-     * channel itself cannot be read; a tab that fails just comes back empty.
-     */
     suspend fun artistPage(url: String, fallbackName: String): ArtistPage? = withContext(Dispatchers.IO) {
         init()
         try {
@@ -382,7 +296,6 @@ class OnlineRepository(context: Context) {
                 for (item in items) {
                     if (songs.size >= ARTIST_SONGS_MAX) break
                     if (item !is StreamInfoItem) continue
-                    // The VIDEOS tab also holds interviews, vlogs, trailers and compilations: not songs.
                     if (!TrackNames.looksLikeSong(item.name.orEmpty(), item.duration)) continue
                     val base = toSong(item) ?: continue
                     val artist = base.artist.ifBlank { name }
@@ -421,14 +334,9 @@ class OnlineRepository(context: Context) {
             null
         }
     }
-
-    /** Songs of a YouTube list plus the cover image YouTube gives it (null when it has none). */
     data class Listing(val songs: List<Song>, val cover: String?)
-
     private fun bestImage(images: List<org.schabi.newpipe.extractor.Image>?): String? =
         images?.asSequence()?.filter { it.url.isNotBlank() }?.maxByOrNull { it.height }?.url
-
-    /** The songs of one album / playlist url, in order, with its cover. Empty on failure. */
     suspend fun playlist(url: String, limit: Int = 80, fallbackArtist: String = ""): Listing =
         withContext(Dispatchers.IO) {
             init()
@@ -453,16 +361,8 @@ class OnlineRepository(context: Context) {
                 Listing(emptyList(), null)
             }
         }
-
-    /** The songs of one album / playlist url, in order. Empty on failure. */
     suspend fun playlistSongs(url: String, limit: Int = 80, fallbackArtist: String = ""): List<Song> =
         playlist(url, limit, fallbackArtist).songs
-
-    /**
-     * YouTube's own radio (Mix) for a song: the playlist `RD<videoId>` read through NewPipe's mix
-     * extractor, first page plus up to two more pages, capped at [limit]. The seed song comes
-     * first. Empty on any failure (including the consent wall some regions show for mixes).
-     */
     suspend fun radio(videoId: String, limit: Int = 50, fallbackArtist: String = ""): Listing =
         withContext(Dispatchers.IO) {
             init()
@@ -493,7 +393,6 @@ class OnlineRepository(context: Context) {
                     pages++
                 }
                 persistMetadata()
-                // A mix has no cover of its own: YouTube gives the seed video's thumbnail.
                 Listing(songs, bestImage(runCatching { info.thumbnails }.getOrNull()) ?: songs.firstOrNull()?.thumbUri?.toString())
             } catch (e: CancellationException) {
                 throw e
@@ -501,10 +400,6 @@ class OnlineRepository(context: Context) {
                 Listing(emptyList(), null)
             }
         }
-
-    // ---- Resolve ----
-
-    /** Best audio-only stream url for a video id; called fresh whenever the player opens the item. */
     suspend fun resolve(videoId: String, quality: AudioQuality = AudioQuality.High): String =
         withContext(Dispatchers.IO) {
             val key = "$videoId/${quality.name}"
@@ -518,38 +413,25 @@ class OnlineRepository(context: Context) {
             urlCache[key] = CachedUrl(url, System.currentTimeMillis() + URL_TTL_MS)
             url
         }
-
-    /**
-     * Resolves a stream url ahead of the tap so the first play starts without the extraction wait
-     * (cached for [URL_TTL_MS]). Best effort: any failure is ignored, the real play resolves again.
-     */
     suspend fun prefetch(videoId: String, quality: AudioQuality = AudioQuality.High) {
         try {
             resolve(videoId, quality)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // ignored on purpose
         }
     }
-
-    /** Blocking bridge for the player's data-source resolver (it runs on a loader thread). */
     fun resolveBlocking(videoId: String, quality: AudioQuality = AudioQuality.High): String =
         runBlocking { resolve(videoId, quality) }
-
-    /** A stream chosen for saving to disk: plain progressive http, AAC (m4a) preferred because it
-     * plays and exports everywhere. */
     data class DownloadStream(
         val url: String,
         val extension: String,
         val kbps: Int,
-        /** Size in bytes when the provider reports it, else -1. */
         val contentLength: Long,
     ) {
         val formatLabel: String
             get() = extension.uppercase() + if (kbps > 0) " · $kbps kbps" else ""
     }
-
     suspend fun resolveForDownload(videoId: String, quality: AudioQuality): DownloadStream =
         withContext(Dispatchers.IO) {
             init()
@@ -563,8 +445,6 @@ class OnlineRepository(context: Context) {
                 contentLength = stream.itagItem?.contentLength ?: -1L,
             )
         }
-
-    /** Bitrate in kbps whichever unit the extractor reported. 0 when unknown. */
     private fun kbpsOf(stream: AudioStream): Int {
         val raw = if (stream.averageBitrate > 0) stream.averageBitrate else stream.bitrate
         return when {
@@ -573,12 +453,6 @@ class OnlineRepository(context: Context) {
             else -> raw
         }
     }
-
-    /**
-     * Picks the stream for a quality level: High = highest bitrate, Standard = best at or below
-     * 128 kbps, DataSaver = best at or below 64 kbps; when nothing fits under the cap the lowest
-     * available stream is used. Streams without a url are never chosen.
-     */
     private fun pickStream(
         streams: List<AudioStream>,
         quality: AudioQuality,
@@ -606,21 +480,12 @@ class OnlineRepository(context: Context) {
             pool.minByOrNull { kbpsOf(it).takeIf { k -> k > 0 } ?: Int.MAX_VALUE }
         }
     }
-
-    // ---- Metadata store (used when a saved queue contains online songs) ----
-
-    /** Snapshot of every known online song, most-search-recently first is not guaranteed. */
     fun cachedSongs(): List<Song> = synchronized(memory) { memory.values.toList() }
-
-    /** Registers online songs that are about to play so [peek] finds them (saved to disk off-thread). */
     fun remember(songs: List<Song>) {
         synchronized(memory) { songs.forEach { s -> s.videoId?.let { memory[it] = s } } }
         Thread { persistMetadata() }.start()
     }
-
-    /** Song with the matching online id, from the in-memory cache. Main-thread safe. */
     fun peek(id: Long): Song? = synchronized(memory) { memory.values.firstOrNull { it.id == id } }
-
     private fun persistMetadata() {
         val json = JSONObject()
         synchronized(memory) {
@@ -639,7 +504,6 @@ class OnlineRepository(context: Context) {
         }
         prefs.edit().putString(KEY_METADATA, json.toString()).apply()
     }
-
     private fun loadMetadata() {
         val raw = prefs.getString(KEY_METADATA, null) ?: return
         runCatching {
@@ -664,10 +528,6 @@ class OnlineRepository(context: Context) {
             }
         }
     }
-
-    // ---- Extractor plumbing ----
-
-    /** NewPipe.init must happen once per process before any extractor call; retried if it failed before. */
     private fun init() {
         if (inited) return
         synchronized(OnlineRepository::class.java) {
@@ -676,8 +536,6 @@ class OnlineRepository(context: Context) {
             inited = true
         }
     }
-
-    /** Plain HttpURLConnection downloader - extractor requests never carry anything but headers. */
     private class HttpDownloader : Downloader() {
         override fun execute(request: Request): Response {
             val conn = URL(request.url()).openConnection() as HttpURLConnection
@@ -709,21 +567,16 @@ class OnlineRepository(context: Context) {
             }
         }
     }
-
     private fun thumbOf(item: StreamInfoItem, videoId: String): String? =
         item.thumbnails.asSequence()
             .filter { it.url.isNotBlank() }
             .maxByOrNull { it.height }
             ?.url
             ?: "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
-
     private class CachedUrl(val url: String, val expiresAt: Long)
-
     private companion object {
         @Volatile
         var inited = false
-
-        /** Stream urls resolved in this process; short-lived by design (they are tied to time and IP). */
         val urlCache = java.util.concurrent.ConcurrentHashMap<String, CachedUrl>()
         const val URL_TTL_MS = 20L * 60L * 1000L
         const val KEY_METADATA = "songs"

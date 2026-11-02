@@ -1,5 +1,4 @@
 package com.dopavin.ui.components
-
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.animation.core.animateFloatAsState
@@ -30,7 +29,6 @@ import com.dopavin.R
 import com.dopavin.data.ArtworkLoader
 import com.dopavin.data.ArtworkTint
 import com.dopavin.ui.theme.AppTheme
-
 private val placeholderPairs = listOf(
     Color(0xFF3A2C6B) to Color(0xFF8E3B8C),
     Color(0xFF0F4C5C) to Color(0xFF2A9D8F),
@@ -41,18 +39,11 @@ private val placeholderPairs = listOf(
     Color(0xFF5B2A86) to Color(0xFFE05A9B),
     Color(0xFF16324F) to Color(0xFF48B5C4),
 )
-
-/** A stable gradient for items without artwork, chosen from [seed] so each album looks different. */
 fun placeholderBrush(seed: String): Brush {
     val index = (seed.hashCode() and 0x7fffffff) % placeholderPairs.size
     val (a, b) = placeholderPairs[index]
     return Brush.linearGradient(listOf(a, b))
 }
-
-/**
- * Album art for an audio URI. While loading, or when there is none, a gradient placeholder with a
- * note glyph is shown. Decorative: the title next to it carries the meaning.
- */
 @Composable
 fun ArtworkImage(
     uri: Uri?,
@@ -77,7 +68,6 @@ fun ArtworkImage(
         animationSpec = tween(motion.medium),
         label = "artworkAlpha",
     )
-
     Box(
         modifier = modifier
             .clip(shape)
@@ -102,11 +92,6 @@ fun ArtworkImage(
         }
     }
 }
-
-/**
- * The tint colour of the artwork behind [uri], or null while unknown / when the art has no usable colour.
- * Keeps the previous colour while the next one is computed so backgrounds never flash.
- */
 @Composable
 fun rememberArtworkTint(uri: Uri?): Color? {
     val context = LocalContext.current

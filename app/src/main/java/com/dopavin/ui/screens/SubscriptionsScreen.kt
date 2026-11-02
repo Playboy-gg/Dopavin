@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,15 +46,7 @@ import com.dopavin.ui.components.LocalBottomInset
 import com.dopavin.ui.components.clickableScale
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/** The newest few uploads get big cards; the rest of the feed is compact rows. */
 private const val BIG_CARDS = 3
-
-/**
- * F-129. Subscribed channels (tap one for all of its uploads), then the merged latest-uploads feed:
- * the first few as big cards, the rest as rows. Pull down to check for new uploads. Unsubscribe
- * lives at the bottom so it is never hit by accident.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubscriptionsScreen(
@@ -180,8 +171,6 @@ fun SubscriptionsScreen(
         }
     }
 }
-
-/** Round channel avatar with its name underneath. */
 @Composable
 private fun ChannelBubble(channel: Subscription, onClick: () -> Unit) {
     val label = stringResource(R.string.cd_channel, channel.name)

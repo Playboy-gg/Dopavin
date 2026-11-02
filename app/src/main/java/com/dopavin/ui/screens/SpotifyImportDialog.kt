@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,8 +25,6 @@ import com.dopavin.ui.components.AppText
 import com.dopavin.ui.components.GlassDialog
 import com.dopavin.ui.components.glassInk
 import com.dopavin.ui.theme.AppTheme
-
-/** F-204: paste a public Spotify playlist or album link; the songs are found on YouTube Music and saved as a playlist. */
 @Composable
 fun SpotifyImportDialog(onImport: (String) -> Unit, onDismiss: () -> Unit) {
     var link by remember { mutableStateOf("") }

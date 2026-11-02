@@ -1,12 +1,5 @@
 package com.dopavin.data
-
-/** The newest-last upsert rule of [HistoryStore], as pure code so it can be tested. */
 object HistoryMath {
-    /**
-     * Records a play of the item matched by [match]. A play closer than [gapMs] to the last one only
-     * refreshes nothing (returns false). Otherwise the existing entry is MOVED to the end with the new time
-     * (so "the last entry" is always the latest play), or [create] is appended. Returns true when changed.
-     */
     fun <T> upsertNewest(
         entries: MutableList<T>,
         now: Long,

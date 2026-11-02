@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,8 +56,6 @@ import com.dopavin.ui.components.ToggleRow
 import com.dopavin.ui.components.clickableScale
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/** The settings categories (F-114). Each opens its own page from the hub; search flattens them. */
 private enum class SettingsCategory(val icon: Int, val title: Int, val summary: Int) {
     Playback(R.drawable.ic_headphones, R.string.cat_playback, R.string.settings_sum_playback),
     Sound(R.drawable.ic_audio_lines, R.string.cat_audio, R.string.settings_sum_sound),
@@ -71,28 +68,18 @@ private enum class SettingsCategory(val icon: Int, val title: Int, val summary: 
     Updates(R.drawable.ic_download, R.string.cat_updates, R.string.settings_sum_updates),
     About(R.drawable.ic_info, R.string.cat_about, R.string.settings_sum_about),
 }
-
-/**
- * S-08 (F-114 redesign). A hub of seven category cards; tapping one opens that category as its own
- * page (back returns to the hub). The search field flattens every category into one filtered list.
- * Destructive actions (delete all downloads, restore defaults, clear personalisation) are confirmed.
- */
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
     effects: EffectsState,
     actions: MusicActions,
-    /** Set when this is a category page pushed from the hub (Route.SettingsPage); null for the hub itself. */
     categoryName: String? = null,
 ) {
     val colors = AppTheme.colors
     var query by rememberSaveable { mutableStateOf("") }
     val category = categoryName?.let { name -> SettingsCategory.values().firstOrNull { it.name == name } }
     val searching = query.isNotBlank()
-
-    // Back (button, device, predictive) is the app's normal page back: a category is a real route above the hub.
     FloatingBackButton(actions::back)
-    // Title and search scroll away with the page; only the glass back button stays put.
     Column(
         Modifier
             .fillMaxSize()
@@ -163,9 +150,6 @@ fun SettingsScreen(
         }
     }
 }
-
-// ---- Hub ----
-
 @Composable
 private fun Hub(onOpen: (SettingsCategory) -> Unit) {
     val colors = AppTheme.colors
@@ -199,7 +183,6 @@ private fun Hub(onOpen: (SettingsCategory) -> Unit) {
                     Spacer(Modifier.width(Dimens.lg))
                     AppText(title, AppTheme.type.bodyStrong, maxLines = 2, modifier = Modifier.weight(1f))
                     if (cat == SettingsCategory.Updates && newVersion) {
-                        // No pop-up: the hub itself says a new version is waiting.
                         AppText(
                             stringResource(R.string.update_badge),
                             AppTheme.type.caption,
@@ -222,7 +205,6 @@ private fun Hub(onOpen: (SettingsCategory) -> Unit) {
         }
     }
 }
-
 @Composable
 private fun SectionLabel(text: String) {
     AppText(
@@ -234,14 +216,11 @@ private fun SectionLabel(text: String) {
             .semantics { heading() },
     )
 }
-
-/** True when any row label of [cat] contains [q]; used to hide empty categories while searching. */
 @Composable
 private fun rowsMatching(cat: SettingsCategory, q: String): Boolean {
     val labels = rowLabels(cat)
     return labels.any { it.contains(q, ignoreCase = true) }
 }
-
 @Composable
 private fun rowLabels(cat: SettingsCategory): List<String> = when (cat) {
     SettingsCategory.Playback -> listOf(
@@ -285,9 +264,6 @@ private fun rowLabels(cat: SettingsCategory): List<String> = when (cat) {
         R.string.update_whats_new,
     )
 }.map { stringResource(it) }
-
-// ---- Category pages ----
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CategoryPage(
@@ -475,7 +451,6 @@ private fun CategoryPage(
         SettingsCategory.Updates -> UpdatesPage(actions, settings.autoUpdateCheck, match)
         SettingsCategory.About -> {
             AboutPage(actions, onOpenPrivacy = { onNavigate(SettingsCategory.Privacy) })
-            // Debug builds keep every crash they had; release builds never show this row.
             val ctx = androidx.compose.ui.platform.LocalContext.current
             if (com.dopavin.CrashReporter.isDebuggable(ctx)) {
                 SettingsRow(
@@ -485,7 +460,6 @@ private fun CategoryPage(
             }
         }
     }
-    // Delete-all lives with the downloads, in its own destructive row.
     if (category == SettingsCategory.Downloads) {
         var confirm by remember { mutableStateOf(false) }
         val label = stringResource(R.string.settings_delete_downloads)
@@ -522,7 +496,6 @@ private fun CategoryPage(
         }
     }
 }
-
 @Composable
 private fun Toggle(
     title: Int,
@@ -540,8 +513,6 @@ private fun Toggle(
         )
     }
 }
-
-/** Three-way audio quality choice as chips, with a one-line explanation of the chosen level. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun QualityPicker(
@@ -570,19 +541,16 @@ private fun QualityPicker(
         }
     }
 }
-
 private fun qualityLabel(q: AudioQuality): Int = when (q) {
     AudioQuality.High -> R.string.quality_high
     AudioQuality.Standard -> R.string.quality_standard
     AudioQuality.DataSaver -> R.string.quality_saver
 }
-
 private fun qualityHint(q: AudioQuality): Int = when (q) {
     AudioQuality.High -> R.string.quality_high_hint
     AudioQuality.Standard -> R.string.quality_standard_hint
     AudioQuality.DataSaver -> R.string.quality_saver_hint
 }
-
 @Composable
 internal fun ConfirmDialog(
     title: String,
@@ -600,12 +568,6 @@ internal fun ConfirmDialog(
         onDismiss = onDismiss,
     )
 }
-
-/**
- * Lyrics provider choice: "Choose" races every provider; the others use only that provider. Only
- * providers that really exist are listed, each with what it can deliver. The accent marks the
- * selected one.
- */
 @Composable
 private fun LyricsProviderPicker(selected: String, onSelect: (String) -> Unit) {
     val colors = AppTheme.colors
@@ -681,8 +643,6 @@ private fun LyricsProviderPicker(selected: String, onSelect: (String) -> Unit) {
         }
     }
 }
-
-/** Long informational text under a header. */
 @Composable
 private fun Note(text: String) {
     AppText(

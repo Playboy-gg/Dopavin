@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -82,10 +81,6 @@ import com.dopavin.ui.components.rememberArtworkTint
 import com.dopavin.ui.components.songCountText
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/** S-02, F-97. Home is the online scene: greeting + hero, mood chips (they work offline),
- * category tiles, the top played artists as YouTube shelves, "Because you played X", and a
- * history shelf (the play log, newest first) that stays under the YouTube toggle. */
 @Composable
 fun HomeScreen(
     view: ViewState,
@@ -107,12 +102,8 @@ fun HomeScreen(
         HomeContent(visible, playback, currentSong, home, liked, actions)
     }
 }
-
 private const val RECENT_SHELF_SIZE = 12
-
-/** The six seed categories (F-87): a label for the UI, a YouTube Music query for the back end. */
 private data class HomepageCategory(val label: Int, val query: String)
-
 private val HOMEPAGE_CATEGORIES = listOf(
     HomepageCategory(R.string.cat_charts, "top songs this week"),
     HomepageCategory(R.string.cat_punjabi, "new punjabi songs"),
@@ -121,13 +112,10 @@ private val HOMEPAGE_CATEGORIES = listOf(
     HomepageCategory(R.string.cat_lofi, "lofi chill songs"),
     HomepageCategory(R.string.cat_english, "top english hits"),
 )
-
 private const val QUICK_PICKS = 8
 private const val TRENDING_RANKED = 5
 private const val SUBS_SHELF_SIZE = 12
 private val BIG_CARD_WIDTH = 280.dp
-
-/** Recent plays first, topped up with the newest downloads; never the same song twice. */
 private fun quickPicks(history: List<Song>, downloaded: List<Song>): List<Song> {
     val out = ArrayList<Song>(QUICK_PICKS)
     for (song in history + downloaded.sortedByDescending { it.dateAdded }) {
@@ -136,7 +124,6 @@ private fun quickPicks(history: List<Song>, downloaded: List<Song>): List<Song> 
     }
     return out
 }
-
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeContent(
@@ -154,7 +141,6 @@ private fun HomeContent(
     val radioSeeds = remember(home.topArtists, home.history, home.trending) {
         radioSeeds(home.topArtists, home.history, home.trending)
     }
-
     var refreshing by remember { mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(refreshing) {
         if (refreshing) {
@@ -185,8 +171,6 @@ private fun HomeContent(
                     onSettings = actions::openSettings,
                 )
             }
-
-            // 1. The one big thing: continue what is playing (or shuffle the library).
             item(key = "hero") {
                 HeroCard(
                     playback = playback,
@@ -206,8 +190,6 @@ private fun HomeContent(
                         .widthIn(max = 560.dp),
                 )
             }
-
-            // 2. Round shortcuts into places that already exist.
             item(key = "shortcuts") {
                 ShortcutRow(
                     likedCount = liked.size,
@@ -215,8 +197,6 @@ private fun HomeContent(
                     actions = actions,
                 )
             }
-
-            // 3. Jump back in: poster cards (recent plays topped up with newest downloads).
             if (quick.isNotEmpty()) {
                 item(key = "jump_h") {
                     SectionHeader(
@@ -243,8 +223,6 @@ private fun HomeContent(
                     }
                 }
             }
-
-            // 4. Moods in two rows.
             item(key = "moods_h") {
                 SectionHeader(
                     title = stringResource(R.string.home_moods),
@@ -252,8 +230,6 @@ private fun HomeContent(
                 )
             }
             item(key = "moods") { MoodGrid(actions) }
-
-            // 5. Top artists.
             if (home.topArtists.isNotEmpty()) {
                 item(key = "top_artists_h") {
                     SectionHeader(
@@ -272,8 +248,6 @@ private fun HomeContent(
                     }
                 }
             }
-
-            // 5b. Radios: YouTube's own radio (mix) of songs you listen to; opens as a full song list.
             if (home.active && radioSeeds.isNotEmpty()) {
                 item(key = "radios_h") {
                     SectionHeader(
@@ -297,8 +271,6 @@ private fun HomeContent(
                     }
                 }
             }
-
-            // 6. Explore: the existing YouTube feed (subscriptions, trending, related, artist shelves).
             if (home.subFeed.isNotEmpty()) {
                 songShelf(
                     key = "subs",
@@ -317,7 +289,6 @@ private fun HomeContent(
                     SubscriptionsTip(onClick = actions::openSubscriptions)
                 }
             }
-
             if (home.active && home.loading && home.trending.isEmpty()) {
                 item(key = "skeleton_h") {
                     SectionHeader(
@@ -386,7 +357,6 @@ private fun HomeContent(
                     onSeeAll = { actions.openOnlineList(shelf.name, shelf.name) },
                 )
             }
-
             if (home.active) {
                 item(key = "categories_h") {
                     SectionHeader(
@@ -396,8 +366,6 @@ private fun HomeContent(
                 }
                 item(key = "categories") { GenreGrid(actions) }
             }
-
-            // F-97: the play log as a shelf. Newest first; stays when the online toggle is off.
             songShelf(
                 key = "history",
                 title = context.getString(R.string.home_history),
@@ -410,8 +378,6 @@ private fun HomeContent(
         }
     }
 }
-
-/** One horizontal shelf: a header (with optional "See all") and a row of song cards that play on tap. */
 private fun LazyListScope.songShelf(
     key: String,
     title: String,
@@ -422,7 +388,6 @@ private fun LazyListScope.songShelf(
     actions: MusicActions,
     seeAll: String? = null,
     onSeeAll: (() -> Unit)? = null,
-    /** Big wide cards (Subscriptions, Trending) instead of the small square ones. */
     big: Boolean = false,
 ) {
     if (songs.isEmpty()) return
@@ -464,8 +429,6 @@ private fun LazyListScope.songShelf(
         }
     }
 }
-
-/** Up to six online songs, one per artist, to build radios from: most played artists, then recent plays, then trending. */
 private fun radioSeeds(top: List<Song>, history: List<Song>, trending: List<Song>): List<Song> {
     val seen = HashSet<String>()
     val out = ArrayList<Song>(RADIO_SEEDS)
@@ -477,10 +440,7 @@ private fun radioSeeds(top: List<Song>, history: List<Song>, trending: List<Song
     }
     return out
 }
-
 private const val RADIO_SEEDS = 6
-
-/** One radio: the seed song's thumbnail with a radio badge, "<Artist> Radio" and where it starts. */
 @Composable
 private fun RadioCard(seed: Song, onClick: () -> Unit) {
     val colors = AppTheme.colors
@@ -529,8 +489,6 @@ private fun RadioCard(seed: Song, onClick: () -> Unit) {
         AppText(stringResource(R.string.radio_card_subtitle, seed.title), AppTheme.type.caption, color = colors.textSecondary)
     }
 }
-
-/** Grey placeholder cards shown while the very first shelf loads (no cache yet). */
 @Composable
 private fun ShelfSkeleton() {
     val colors = AppTheme.colors
@@ -567,12 +525,6 @@ private fun ShelfSkeleton() {
         }
     }
 }
-
-/**
- * The Home hero. While something is loaded in the player it is a full-bleed artwork card (title and a
- * play pill laid over a dark gradient) that opens the player; otherwise a brand-gradient card that
- * offers "shuffle all" (or "discover" when nothing is saved yet).
- */
 @Composable
 private fun HeroCard(
     playback: PlaybackUi,
@@ -688,7 +640,6 @@ private fun HeroCard(
         }
     }
 }
-
 @Composable
 private fun HeroPlayPill(playing: Boolean, onClick: () -> Unit) {
     val colors = AppTheme.colors
@@ -715,9 +666,6 @@ private fun HeroPlayPill(playing: Boolean, onClick: () -> Unit) {
         AppText(label, AppTheme.type.label, color = colors.canvas)
     }
 }
-
-/** F-98: a Home shelf card with the shared song-action menu. Long-press opens it; the tap
- * still plays the card. Wraps [OnlineSongCard] visually unchanged. */
 @Composable
 private fun SongShelfCard(
     song: Song,
@@ -753,8 +701,6 @@ private fun SongShelfCard(
         )
     }
 }
-
-/** One online song inside a Home shelf. Mirrors the AlbumCard look with YouTube's thumbnail. */
 @Composable
 private fun OnlineSongCard(
     song: Song,
@@ -803,7 +749,6 @@ private fun OnlineSongCard(
                 AppText(song.artist, AppTheme.type.caption, color = colors.textSecondary)
             }
             if (onMore != null) {
-                // F-109: a visible, 48dp "more" target; long-press still works as a shortcut.
                 IconAction(
                     icon = R.drawable.ic_more,
                     description = stringResource(R.string.cd_more_options, song.title),
@@ -814,8 +759,6 @@ private fun OnlineSongCard(
         }
     }
 }
-
-/** F-130: a big feed card with the shared song-action menu on long-press. */
 @Composable
 private fun BigShelfCard(
     song: Song,
@@ -850,8 +793,6 @@ private fun BigShelfCard(
         )
     }
 }
-
-/** Shown while nothing is subscribed: one quiet card that explains how and opens Subscriptions. */
 @Composable
 private fun SubscriptionsTip(onClick: () -> Unit) {
     val colors = AppTheme.colors
@@ -885,8 +826,6 @@ private fun SubscriptionsTip(onClick: () -> Unit) {
         }
     }
 }
-
-/** Round artist avatar (artwork of their newest play) with the name underneath. */
 @Composable
 private fun TopArtistBubble(song: Song, avatar: String?, onClick: () -> Unit) {
     val label = stringResource(R.string.cd_open_artist, song.artist)
@@ -918,9 +857,6 @@ private fun TopArtistBubble(song: Song, avatar: String?, onClick: () -> Unit) {
         )
     }
 }
-
-
-/** The real app logo: the launcher's mipmap background + foreground, rounded; nothing redrawn. */
 @Composable
 private fun AppLogo(size: androidx.compose.ui.unit.Dp) {
     Box(
@@ -933,7 +869,6 @@ private fun AppLogo(size: androidx.compose.ui.unit.Dp) {
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
         )
-        // The adaptive foreground has a safe-zone margin; scale it up so the mark fills the tile.
         androidx.compose.foundation.Image(
             painter = painterResource(R.mipmap.ic_launcher_foreground),
             contentDescription = null,
@@ -946,8 +881,6 @@ private fun AppLogo(size: androidx.compose.ui.unit.Dp) {
         )
     }
 }
-
-/** Logo, greeting + library line, and two glass buttons (search, settings). */
 @Composable
 private fun HomeHeader(subtitle: String, onSearch: () -> Unit, onSettings: () -> Unit) {
     val colors = AppTheme.colors
@@ -968,7 +901,6 @@ private fun HomeHeader(subtitle: String, onSearch: () -> Unit, onSettings: () ->
             )
             AppText(text = subtitle, style = AppTheme.type.bodySmall, color = colors.textSecondary, maxLines = 1)
         }
-        // Search and settings share one pill (glass, or a solid pill when glass is off).
         GlassIconPill(fallback = colors.surfaceRaised) {
             IconAction(
                 icon = R.drawable.ic_search,
@@ -983,10 +915,7 @@ private fun HomeHeader(subtitle: String, onSearch: () -> Unit, onSettings: () ->
         }
     }
 }
-
 private class Shortcut(val label: Int, val icon: Int, val onClick: () -> Unit)
-
-/** Round shortcuts (icon disc + label) into screens that already exist. */
 @Composable
 private fun ShortcutRow(likedCount: Int, hasDownloads: Boolean, actions: MusicActions) {
     val colors = AppTheme.colors
@@ -1046,8 +975,6 @@ private fun ShortcutRow(likedCount: Int, hasDownloads: Boolean, actions: MusicAc
         }
     }
 }
-
-/** A tall poster card: artwork fills the card, title over a gradient, small play / now-playing badge. */
 @Composable
 private fun PosterCard(
     song: Song,
@@ -1140,8 +1067,6 @@ private fun PosterCard(
         onOpenDetails = { actions.openSongDetails(song) },
     )
 }
-
-/** Moods in two horizontally scrolling rows of glass pills. */
 @Composable
 private fun MoodGrid(actions: MusicActions) {
     androidx.compose.foundation.lazy.grid.LazyHorizontalGrid(
@@ -1171,8 +1096,6 @@ private fun MoodGrid(actions: MusicActions) {
         }
     }
 }
-
-/** One row of the ranked trending list: big rank number, artwork, title / artist, more. */
 @Composable
 private fun RankedSongRow(
     rank: Int,
@@ -1245,8 +1168,6 @@ private fun RankedSongRow(
         onOpenDetails = { actions.openSongDetails(song) },
     )
 }
-
-/** The six seed genres as a two-column grid of gradient tiles (each opens the online list). */
 @Composable
 private fun GenreGrid(actions: MusicActions) {
     Column(

@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -97,12 +96,6 @@ import com.dopavin.ui.components.LocalDownloads
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import androidx.compose.material3.CircularProgressIndicator
-
-
-/**
- * S-06. Full-screen player. Background gradient follows the artwork colour; artwork breathes with
- * play / pause; swipe the artwork sideways for previous / next, swipe down anywhere to close.
- */
 @Composable
 fun NowPlayingScreen(
     playback: PlaybackUi,
@@ -123,11 +116,8 @@ fun NowPlayingScreen(
     subscribed: Boolean,
     onOpenSleep: () -> Unit,
     actions: MusicActions,
-    /** Finger movement while swiping down (px, positive = down); the root turns it into sheet progress. */
     onDragSheet: (Float) -> Unit,
-    /** Finger lifted: the root decides between closing and returning to open. */
     onReleaseSheet: () -> Unit,
-    /** Pointer cancelled: the root returns the sheet to open. */
     onCancelSheet: () -> Unit,
 ) {
     val colors = AppTheme.colors
@@ -138,7 +128,6 @@ fun NowPlayingScreen(
     }
     val motion = AppTheme.motion
     val density = LocalDensity.current
-
     val tint = rememberArtworkTint(song?.artworkUri)
     val top by animateColorAsState(
         targetValue = tint?.let { lerp(colors.canvas, it, if (colors.isDark) 0.62f else 0.45f) }
@@ -146,22 +135,14 @@ fun NowPlayingScreen(
         animationSpec = tween(motion.ambient),
         label = "playerTint",
     )
-
     var sheet by remember { mutableStateOf<PlayerSheet?>(null) }
-    // Lyrics / queue replace the artwork while active; tapping the same button again brings it back.
     var stage by remember { mutableStateOf(PlayerStage.Artwork) }
-    // Lyrics / queue are showing: the cover must not fly over them when the player is dragged or closed (F-212).
     val coverFlight = com.dopavin.ui.components.LocalArtworkFlight.current
     androidx.compose.runtime.SideEffect { coverFlight?.coverVisible = stage == PlayerStage.Artwork }
     androidx.compose.runtime.DisposableEffect(coverFlight) { onDispose { coverFlight?.coverVisible = true } }
-
-    // Swipe down to close: the finger drives the ROOT sheet (the same value Predictive Back and the cover flight
-    // use), so the screen, the flying cover and the bars all follow one progress. Latest callbacks are read
-    // through updated state because the pointer block below is keyed on the stage, not on them.
     val latestDrag by androidx.compose.runtime.rememberUpdatedState(onDragSheet)
     val latestRelease by androidx.compose.runtime.rememberUpdatedState(onReleaseSheet)
     val latestCancel by androidx.compose.runtime.rememberUpdatedState(onCancelSheet)
-
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
@@ -177,8 +158,6 @@ fun NowPlayingScreen(
                 )
             },
     ) {
-        // The player's own background lives in its own recorded layer so the glass buttons above it
-        // (close, more) bend and tint what is really behind them, not the app behind the player.
         val playerBackdrop = com.dopavin.ui.glass.backdrop.backdrops.rememberLayerBackdrop()
         Box(
             Modifier
@@ -187,8 +166,6 @@ fun NowPlayingScreen(
                 .background(colors.canvas)
                 .then(
                 if (ambience) {
-                    // Glow that starts at the top edge and fades downwards: a radial wash centred on the
-                    // top middle plus a soft vertical fade, so the colour spreads from the top, not the middle.
                     val strength = if (colors.isDark) 1f else 0.8f
                     Modifier.drawBehind {
                         drawRect(
@@ -224,12 +201,8 @@ fun NowPlayingScreen(
                 else -> ArtworkStage(playback, song, previousSong, nextSong, actions, stageModifier)
             }
         }
-        // The artwork and controls are recorded too (without the menu itself), so the More menu's glass bends
-        // the real player behind it. Buttons inside keep sampling only the background layer: a glass
-        // surface must never sample a layer that contains itself.
         val contentBackdrop = com.dopavin.ui.glass.backdrop.backdrops.rememberLayerBackdrop()
         val menuBackdrop = com.dopavin.ui.glass.backdrop.backdrops.rememberCombinedBackdrop(playerBackdrop, contentBackdrop)
-        // Recording the whole foreground costs a layer redraw, so it only happens while the menu is open.
         Box(Modifier.fillMaxSize().layerBackdrop(contentBackdrop, frozen = { sheet == null })) {
         if (wide) {
             Row(
@@ -272,8 +245,6 @@ fun NowPlayingScreen(
                 }
             }
         } else {
-            // Short screens (small phones, big font scale): everything scrolls and the artwork gets
-            // a fixed square, so the controls are never squeezed out of view.
             val compact = boxHeight < 640.dp
             val screenWidth = boxWidth
             val controls: @Composable () -> Unit = {
@@ -323,7 +294,6 @@ fun NowPlayingScreen(
             }
         }
         }
-
         when (sheet) {
             PlayerSheet.More -> androidx.compose.runtime.CompositionLocalProvider(com.dopavin.ui.glass.LocalGlassBackdrop provides menuBackdrop) {
                 MoreSheet(playback, song, skipSilence, subscribed, actions, onClose = { sheet = null })
@@ -333,11 +303,8 @@ fun NowPlayingScreen(
         }
     }
 }
-
 private enum class PlayerSheet { More }
-
 private enum class PlayerStage { Artwork, Lyrics, Queue }
-
 @Composable
 private fun CloseRow(actions: MusicActions, onMore: () -> Unit) {
     Row(
@@ -366,12 +333,6 @@ private fun CloseRow(actions: MusicActions, onMore: () -> Unit) {
         )
     }
 }
-
-/**
- * F-107 / F-148: the More controls dropdown. Every row does something real:
- * speed chips, the skip-silence switch, the current audio output plus the system's own
- * sound/output settings, song radio, song details and an honest offline status.
- */
 @Composable
 internal fun MoreSheet(
     playback: PlaybackUi,
@@ -383,8 +344,6 @@ internal fun MoreSheet(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val outputLabel = remember(context) { outputDeviceLabel(context) }
-    // F-148: a dropdown next to the More button instead of a bottom sheet (the tap that opened it
-    // recorded the button's bounds in MenuAnchor).
     val anchor = remember { com.dopavin.ui.components.MenuAnchor.fresh() }
     com.dopavin.ui.components.AnchoredMenu(anchor = anchor, onDismiss = onClose, width = 320.dp) {
         Column(
@@ -530,12 +489,6 @@ internal fun MoreSheet(
         }
     }
 }
-
-/**
- * F-201: opens the system's own output switcher (Bluetooth, cast and speaker choices) as a panel over the app.
- * The panel action is not part of the public SDK and differs between phone makers, so when no activity answers
- * the general sound settings open instead.
- */
 private fun openOutputPicker(context: android.content.Context) {
     val flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
     val panel = android.content.Intent("com.android.settings.panel.action.MEDIA_OUTPUT")
@@ -555,8 +508,6 @@ private fun openOutputPicker(context: android.content.Context) {
         }
     }
 }
-
-/** The current audio output as a short human label; empty when it cannot be read. */
 private fun outputDeviceLabel(context: android.content.Context): String {
     val manager = context.getSystemService(android.content.Context.AUDIO_SERVICE)
         as? android.media.AudioManager ?: return ""
@@ -593,8 +544,6 @@ private fun outputDeviceLabel(context: android.content.Context): String {
         },
     )
 }
-
-/** Big artwork that shrinks slightly while paused and can be swiped for previous / next. */
 @Composable
 private fun ArtworkStage(
     playback: PlaybackUi,
@@ -622,11 +571,7 @@ private fun ArtworkStage(
     val shape = RoundedCornerShape(Dimens.radiusXLarge)
     val canNext = playback.hasNext
     val canPrevious = playback.hasPrevious
-
-    // The new song is already showing in the neighbour slot, so once the id changes the strip
-    // snaps back to centre without any visible jump.
     LaunchedEffect(song?.id) { offset.snapTo(0f) }
-
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val side: Dp = minOf(maxWidth, maxHeight, Dimens.artworkMax)
         val travel = with(density) { (side + 24.dp).toPx() }
@@ -658,7 +603,6 @@ private fun ArtworkStage(
                         onDragCancel = { scope.launch { offset.animateTo(0f, spring()) } },
                         onHorizontalDrag = { change, delta ->
                             change.consume()
-                            // Resist when there is no song in that direction.
                             val blocked = (delta < 0 && !canNext) || (delta > 0 && !canPrevious)
                             val step = if (blocked) delta * 0.3f else delta
                             scope.launch { offset.snapTo((offset.value + step).coerceIn(-travel, travel)) }
@@ -691,8 +635,6 @@ private fun ArtworkStage(
         }
     }
 }
-
-/** A neighbouring song's artwork, positioned by [translationX]; only drawn while it is in view. */
 @Composable
 private fun ArtworkCard(song: Song?, side: Dp, shape: Shape, visible: () -> Boolean, translationX: () -> Float) {
     if (song == null) return
@@ -701,7 +643,6 @@ private fun ArtworkCard(song: Song?, side: Dp, shape: Shape, visible: () -> Bool
             .size(side)
             .graphicsLayer {
                 this.translationX = translationX()
-                // Only while swiping toward this neighbour; at rest nothing peeks in from the side.
                 alpha = if (visible()) 1f else 0f
                 scaleX = 0.88f
                 scaleY = 0.88f
@@ -717,10 +658,7 @@ private fun ArtworkCard(song: Song?, side: Dp, shape: Shape, visible: () -> Bool
         )
     }
 }
-
-/** How long to wait for the player to report the new song before easing the strip back. */
 private const val SETTLE_MS = 900L
-
 @Composable
 private fun TrackInfo(playback: PlaybackUi, song: Song?, liked: Boolean, actions: MusicActions) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -756,8 +694,6 @@ private fun TrackInfo(playback: PlaybackUi, song: Song?, liked: Boolean, actions
         }
     }
 }
-
-/** The quick download control next to the heart: download, progress (tap cancels) or saved. */
 @Composable
 private fun DownloadButton(song: Song, actions: MusicActions) {
     val videoId = song.videoId ?: return
@@ -804,8 +740,6 @@ private fun DownloadButton(song: Song, actions: MusicActions) {
         )
     }
 }
-
-/** Owns the position polling so only the seek bar recomposes while playing. */
 @Composable
 private fun SeekSection(playback: PlaybackUi, song: Song?, actions: MusicActions) {
     val position = rememberPlaybackPosition(playback.mediaId, playback.isPlaying, actions::position)
@@ -819,7 +753,6 @@ private fun SeekSection(playback: PlaybackUi, song: Song?, actions: MusicActions
         },
     )
 }
-
 @Composable
 private fun TransportRow(playback: PlaybackUi, actions: MusicActions) {
     val repeatIcon = if (playback.repeatMode == Player.REPEAT_MODE_ONE) {
@@ -878,8 +811,6 @@ private fun TransportRow(playback: PlaybackUi, actions: MusicActions) {
         )
     }
 }
-
-/** Speaker icons around a slider that follows the system music volume. */
 @Composable
 private fun VolumeRow() {
     val colors = AppTheme.colors
@@ -913,8 +844,6 @@ private fun VolumeRow() {
         )
     }
 }
-
-/** Lyrics, sound, sleep timer and queue as four equal icon-over-label buttons. "More" lives in the top bar. */
 @Composable
 private fun PlayerActions(
     sleep: SleepState,
@@ -936,7 +865,6 @@ private fun PlayerActions(
         PlayerAction(R.drawable.ic_queue, stringResource(R.string.player_queue), stage == PlayerStage.Queue, onQueue, Modifier.weight(1f))
     }
 }
-
 @Composable
 private fun PlayerAction(
     @androidx.annotation.DrawableRes icon: Int,

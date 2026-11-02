@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import android.net.Uri
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -55,8 +54,6 @@ import com.dopavin.ui.components.TonalButton
 import com.dopavin.ui.components.rememberArtworkTint
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/** What an album or artist page shows. Built by the caller from the library. */
 data class CollectionUi(
     val title: String,
     val subtitle: String,
@@ -64,11 +61,6 @@ data class CollectionUi(
     val songs: List<Song>,
     val isAlbum: Boolean,
 )
-
-/**
- * S-05. Album or artist page: immersive header tinted with the artwork colour, play / shuffle,
- * numbered tracks (album) or artwork rows (artist), and a top bar that fades in when scrolled.
- */
 @Composable
 fun CollectionScreen(
     collection: CollectionUi?,
@@ -78,7 +70,6 @@ fun CollectionScreen(
 ) {
     val colors = AppTheme.colors
     val motion = AppTheme.motion
-
     if (collection == null) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             IconAction(
@@ -94,7 +85,6 @@ fun CollectionScreen(
         }
         return
     }
-
     val listState = rememberLazyListState()
     val scrolled by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
     val barAlpha by animateFloatAsState(
@@ -102,7 +92,6 @@ fun CollectionScreen(
         animationSpec = tween(motion.medium),
         label = "collectionBar",
     )
-
     val tint = rememberArtworkTint(collection.artworkUri)
     val headerTop by animateColorAsState(
         targetValue = tint?.let { lerp(colors.canvas, it, if (colors.isDark) 0.7f else 0.45f) }
@@ -110,11 +99,9 @@ fun CollectionScreen(
         animationSpec = tween(motion.ambient),
         label = "collectionTint",
     )
-
     val currentId = playback.mediaId
     val isThisPlaying = currentId != null && collection.songs.any { it.id.toString() == currentId }
     val playingNow = isThisPlaying && playback.isPlaying
-
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
@@ -139,7 +126,6 @@ fun CollectionScreen(
                             if (collection.isAlbum) {
                                 Modifier.padding(top = Dimens.sm).size(Dimens.artworkHeader)
                             } else {
-                                // Artist: the whole picture, full width, square.
                                 Modifier
                                     .padding(top = Dimens.sm)
                                     .padding(horizontal = Dimens.screenEdge)
@@ -210,8 +196,6 @@ fun CollectionScreen(
                 )
             }
         }
-
-        // Floating top bar: transparent over the art, solid with the title once scrolled.
         Row(
             Modifier
                 .fillMaxWidth()

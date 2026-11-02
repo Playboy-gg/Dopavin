@@ -1,7 +1,5 @@
 @file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
-
 package com.dopavin.ui.glass.floatingtabbar
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloatAsState
@@ -35,10 +33,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import kotlin.math.roundToInt
-
 internal val LocalGeometricFloatingTabBar = staticCompositionLocalOf { false }
 internal val LocalFloatingTabBarCollapseProgress = staticCompositionLocalOf<(() -> Float)?> { null }
-
 @Composable
 internal fun SharedTransitionScope.GeometricFloatingTabBar(
     scope: FloatingTabBarScopeImpl,
@@ -80,7 +76,6 @@ internal fun SharedTransitionScope.GeometricFloatingTabBar(
     val tabsCount = scope.tabs.size.coerceAtLeast(1)
     val ownsSelectedSlot = selected?.key == selectedTabKey
     val sharedScope = this
-
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val tabWidthPx = with(density) { sizes.tabWidth.toPx() }
@@ -88,7 +83,6 @@ internal fun SharedTransitionScope.GeometricFloatingTabBar(
     val padEndPx = with(density) { sizes.tabBarContentPadding.calculateEndPadding(layoutDirection).toPx() }
     val restPillWidth = (tabWidthPx * tabsCount + padStartPx + padEndPx).roundToInt()
     val selectedRestCenter = padStartPx + tabWidthPx * (selectedIndex + 0.5f)
-
     AnimatedVisibility(visible = true) {
         val visibility = this
         Layout(
@@ -169,14 +163,12 @@ internal fun SharedTransitionScope.GeometricFloatingTabBar(
             val spacing = sizes.componentSpacing.roundToPx()
             val p = fold.value
             val s = search.value
-
             val pillW = restPillWidth.coerceAtMost(width)
             val tabs = children[1].measure(Constraints.fixed(pillW, children[1].maxIntrinsicHeight(pillW)))
             val expandedHeight = tabs.height
             val compactHeight = FloatingTabBarInlineHeight.roundToPx().coerceAtMost(expandedHeight)
             val height = lerp(expandedHeight.toFloat(), compactHeight.toFloat(), p).roundToInt()
             val circle = height.coerceAtMost(width)
-
             val playerWidth0 = lerp(width.toFloat(), (width - 2 * (compactHeight + spacing)).coerceAtLeast(0).toFloat(), p).roundToInt()
             val playerHeight = if (accessory != null) children[6].maxIntrinsicHeight(playerWidth0) else 0
             val geometry = foldGeometry(
@@ -210,7 +202,6 @@ internal fun SharedTransitionScope.GeometricFloatingTabBar(
         }
     }
 }
-
 @Composable
 private fun GeometricTabContent(
     icon: @Composable () -> Unit,

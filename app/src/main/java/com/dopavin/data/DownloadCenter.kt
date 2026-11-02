@@ -1,5 +1,4 @@
 package com.dopavin.data
-
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -24,33 +23,16 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-
 enum class DownloadStatus { Queued, Active, Failed }
-
-/** Why a download stopped; the UI maps each to a sentence. */
 enum class DownloadError { Network, WifiOnly, NoSpace, Unavailable }
-
-/** One unfinished download. Finished ones leave this list and appear in [DownloadStore.songs]. */
 data class DownloadItem(
     val videoId: String,
     val song: Song,
     val status: DownloadStatus,
-    /** 0..1, or -1 while the size is not known yet. */
     val progress: Float = -1f,
     val error: DownloadError? = null,
 )
-
-/**
- * Download engine (F-111). A process-wide object, like PlaybackRuntime: the UI enqueues, the
- * [DownloadService] keeps the process alive and shows the notification, and the files end up in
- * [DownloadStore]. At most [PARALLEL] songs download at once; the rest wait as Queued.
- *
- * The audio is fetched with ranged requests of [CHUNK_BYTES] each. That keeps every request small
- * and is the pattern providers expect from a media client; if a server ignores the Range header
- * and answers with the whole file, the body is simply copied once.
- */
 object DownloadCenter {
-
     private const val PARALLEL = 2
     private const val CHUNK_BYTES = 1_048_576L
     private const val TIMEOUT_MS = 20_000
@@ -58,24 +40,14 @@ object DownloadCenter {
     private const val MIN_HD_COVER_BYTES = 5_000
     private const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val gate = Semaphore(PARALLEL)
     private val jobs = HashMap<String, Job>()
-
     private val _items = MutableStateFlow<List<DownloadItem>>(emptyList())
-
-    /** Queued, active and failed downloads in the order they were requested. */
     val items: StateFlow<List<DownloadItem>> = _items.asStateFlow()
-
-    /**
-     * Queues [song]. Returns false when it cannot be downloaded (no video id) or is already saved
-     * or already in the queue.
-     */
     fun enqueue(context: Context, song: Song): Boolean {
         val app = context.applicationContext
         val videoId = song.videoId ?: return false
-        // Songs of the owner's own server are already theirs; the downloader only knows YouTube.
         if (com.dopavin.data.Subsonic.isServerSong(videoId)) return false
         if (DownloadStore.get(app).isDownloaded(videoId)) return false
         synchronized(jobs) {
@@ -91,13 +63,10 @@ object DownloadCenter {
         ContextCompat.startForegroundService(app, Intent(app, DownloadService::class.java))
         return true
     }
-
-    /** Stops one queued/active/failed download and forgets it; the partial file is deleted. */
     fun cancel(videoId: String) {
         synchronized(jobs) { jobs.remove(videoId)?.cancel() }
         _items.update { list -> list.filterNot { it.videoId == videoId } }
     }
-
     fun cancelAll() {
         synchronized(jobs) {
             jobs.values.forEach { it.cancel() }
@@ -105,12 +74,7 @@ object DownloadCenter {
         }
         _items.value = emptyList()
     }
-
-    /** True while something is still queued or running (failed items do not count). */
     fun isBusy(): Boolean = _items.value.any { it.status != DownloadStatus.Failed }
-
-    // ---- Job ----
-
     private suspend fun run(app: Context, song: Song, videoId: String) {
         val store = DownloadStore.get(app)
         var part: File? = null
@@ -162,23 +126,17 @@ object DownloadCenter {
             synchronized(jobs) { jobs.remove(videoId) }
         }
     }
-
     private class DownloadFailure(val error: DownloadError) : Exception()
-
     private fun setState(videoId: String, status: DownloadStatus, progress: Float, error: DownloadError?) {
         _items.update { list ->
             list.map { if (it.videoId == videoId) it.copy(status = status, progress = progress, error = error) else it }
         }
     }
-
-    // ---- Network ----
-
     private fun onUnmeteredNetwork(app: Context): Boolean {
         val manager = app.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return true
         val caps = manager.getNetworkCapabilities(manager.activeNetwork ?: return false) ?: return false
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
     }
-
     private suspend fun fetch(
         url: String,
         target: File,
@@ -220,12 +178,10 @@ object DownloadCenter {
                                 }
                             }
                             if (got == 0L) throw IOException("Empty range response")
-                            // A short answer means the end of the file was reached.
                             if (got < requested && total <= 0) break
                             if (total > 0 && offset >= total) break
                         }
                         HttpURLConnection.HTTP_OK -> {
-                            // The server ignored Range and sent the whole file: only valid from the start.
                             if (offset != 0L) throw IOException("Server restarted the stream")
                             val length = conn.contentLengthLong
                             conn.inputStream.use { input ->
@@ -241,7 +197,7 @@ object DownloadCenter {
                             total = offset
                             break
                         }
-                        416 -> break // range past the end: everything was already written
+                        416 -> break
                         else -> throw IOException("HTTP $code")
                     }
                 } finally {
@@ -255,12 +211,6 @@ object DownloadCenter {
         }
         onProgress(1f)
     }
-
-    /**
-     * Saves the best available cover next to the audio so artwork works offline and is sharp:
-     * high-resolution candidates first ([ArtworkUrls]), the original thumbnail last. A candidate
-     * counts only when it answers 200 and is a real image (not a tiny placeholder). Best effort.
-     */
     private fun fetchCover(song: Song, target: File): Boolean {
         val uri = song.thumbUri ?: return false
         val scheme = uri.scheme?.lowercase()
@@ -271,7 +221,6 @@ object DownloadCenter {
         }
         return false
     }
-
     private fun downloadImage(url: String, target: File, minBytes: Int): Boolean = try {
         val conn = URL(url).openConnection() as HttpURLConnection
         try {

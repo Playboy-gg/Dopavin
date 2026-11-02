@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -70,11 +69,6 @@ import com.dopavin.ui.components.TonalButton
 import com.dopavin.ui.components.formatTime
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/**
- * F-98/F-99: metadata, source, size, as a dialog over the current screen. Only real facts are
- * shown; unknown stays "Unknown". A very long title or artist scrolls sideways (marquee).
- */
 @Composable
 fun SongDetailsDialog(song: Song, actions: MusicActions) {
     val ink = com.dopavin.ui.components.glassInk()
@@ -134,7 +128,6 @@ fun SongDetailsDialog(song: Song, actions: MusicActions) {
         }
     }
 }
-
 @Composable
 private fun DetailLine(label: String, value: String, ink: androidx.compose.ui.graphics.Color) {
     Column {
@@ -142,8 +135,6 @@ private fun DetailLine(label: String, value: String, ink: androidx.compose.ui.gr
         AppText(value, AppTheme.type.label, color = ink, maxLines = 2)
     }
 }
-
-/** One label/value pair of the details + storage screens. */
 @Composable
 private fun InfoValue(label: String, value: String) {
     Column(Modifier.padding(horizontal = Dimens.screenEdge, vertical = Dimens.sm)) {
@@ -151,8 +142,6 @@ private fun InfoValue(label: String, value: String) {
         AppText(value, AppTheme.type.label)
     }
 }
-
-/** F-104: what the app really holds — downloads, its own data and the free space left. */
 @Composable
 fun StorageScreen(storage: StorageUi, actions: MusicActions) {
     var confirmDeleteAll by remember { mutableStateOf(false) }
@@ -222,16 +211,12 @@ fun StorageScreen(storage: StorageUi, actions: MusicActions) {
         )
     }
 }
-
-/** "12.3 MB" / "1.4 GB"; "Unknown" when the number could not be read. */
 @Composable
 private fun sizeText(bytes: Long): String = when {
     bytes <= 0L -> stringResource(R.string.size_unknown_mib)
     bytes >= 1024L * 1024L * 1024L -> String.format(Locale.ROOT, "%.1f GB", bytes / 1024f / 1024f / 1024f)
     else -> String.format(Locale.ROOT, "%.1f MB", bytes / 1024f / 1024f)
 }
-
-/** F-103: Playlists. Named, unique, and the deletion asks before removing anything. */
 @Composable
 fun PlaylistsScreen(playlists: List<Playlist>, actions: MusicActions) {
     var creating by remember { mutableStateOf(false) }
@@ -279,12 +264,6 @@ fun PlaylistsScreen(playlists: List<Playlist>, actions: MusicActions) {
         )
     }
 }
-
-/**
- * One playlist opened in full, laid out like an artist page: a big cover that melts into the page,
- * the name and Play / Shuffle on it, then the songs; remove songs or delete the playlist below.
- * The cover is the YouTube cover saved with the playlist, else a 2x2 collage of its songs.
- */
 @Composable
 fun PlaylistDetailScreen(
     name: String,
@@ -302,7 +281,6 @@ fun PlaylistDetailScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
-                // Alpha-faded like the artist photo, so the lower part blends into whatever the page has behind it.
                 Box(
                     Modifier
                         .fillMaxSize()
@@ -407,7 +385,6 @@ fun PlaylistDetailScreen(
             )
             Spacer(Modifier.navigationBarsPadding().heightIn(Dimens.xl))
         }
-        // Fixed over the page; the root draws it as real glass.
         FloatingBackButton(actions::back)
     }
     if (confirmDelete) {
@@ -425,8 +402,6 @@ fun PlaylistDetailScreen(
         )
     }
 }
-
-/** Named entry dialog used by "new playlist", "add selection to playlist" and "save queue". */
 @Composable
 internal fun PlaylistNameDialog(
     onDismiss: () -> Unit,
@@ -471,9 +446,6 @@ internal fun PlaylistNameDialog(
         }
     }
 }
-
-
-/** The playlist cover: YouTube's cover when saved, else a 2x2 collage of four different song covers, else the first. */
 @Composable
 internal fun PlaylistCover(name: String, cover: String?, songs: List<Song>) {
     val art = remember(songs) { songs.map { it.artworkUri }.distinct().take(4) }

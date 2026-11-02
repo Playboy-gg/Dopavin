@@ -25,10 +25,6 @@
     <string name="about_no_browser">No browser found to open the link.</string>
     <string name="about_open_source">OPEN-SOURCE PROJECTS</string>
     <string name="about_close">Close</string>
-    <!--
-        Owner's repository (given by the owner 2026-10-26; the page could not be opened from the build
-        sandbox, so the repository itself is not verified to exist yet). Empty = the button is hidden.
-    -->
     <string name="about_source_url" translatable="false">https://github.com/playboy-gg/Dopavin</string>
     <string name="about_profile_url" translatable="false">https://github.com/playboy-gg</string>
 </resources>

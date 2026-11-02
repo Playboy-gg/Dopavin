@@ -1,5 +1,4 @@
 package com.dopavin.ui.components
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -39,20 +38,10 @@ import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import com.kyant.capsule.ContinuousRoundedRectangle
 import kotlinx.coroutines.delay
-
-/** One notice: text and an optional single action (e.g. Undo). */
 class ToastData(val text: String, val actionLabel: String?, val onAction: (() -> Unit)?)
-
-/**
- * The app's transient notice (replaces the Material snackbar). One at a time; a new one replaces the
- * old one. It always goes away by itself ([show] returns when it has been shown for its time), also
- * when it carries an action.
- */
 class ToastState {
     var current by mutableStateOf<ToastData?>(null)
         private set
-
-    /** Shows [data] for [durationMs], then hides it. Cancelling (a newer notice) hides it at once. */
     suspend fun show(data: ToastData, durationMs: Long) {
         current = data
         try {
@@ -61,20 +50,11 @@ class ToastState {
             if (current === data) current = null
         }
     }
-
     fun dismiss() {
         current = null
     }
 }
-
-/** How long a notice stays: longer when it offers an action. */
 fun toastDurationMs(hasAction: Boolean): Long = if (hasAction) 5_000L else 3_000L
-
-/**
- * iOS-style banner: a rounded floating card that springs up from the bottom, with the message and an
- * accent-coloured action on its right. With Liquid Glass on it is a glass lens; otherwise a solid
- * themed card with a hairline edge. Swipe it down (or tap the action) to dismiss.
- */
 @Composable
 fun ToastHost(state: ToastState, modifier: Modifier = Modifier) {
     val data = state.current
@@ -83,7 +63,6 @@ fun ToastHost(state: ToastState, modifier: Modifier = Modifier) {
     AnimatedVisibility(
         visible = data != null,
         modifier = modifier,
-        // Reduce motion: the notice only fades, it does not spring in.
         enter = if (AppTheme.motion.reduce) fadeIn(tween(120)) else {
             slideInVertically(spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow)) { it } + fadeIn(tween(160))
         },
@@ -92,7 +71,6 @@ fun ToastHost(state: ToastState, modifier: Modifier = Modifier) {
         last?.let { ToastCard(it, onDismiss = state::dismiss) }
     }
 }
-
 @Composable
 private fun ToastCard(data: ToastData, onDismiss: () -> Unit) {
     val colors = AppTheme.colors

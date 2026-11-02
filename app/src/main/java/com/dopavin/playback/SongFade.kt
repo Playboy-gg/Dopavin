@@ -1,5 +1,4 @@
 package com.dopavin.playback
-
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -7,36 +6,23 @@ import android.os.SystemClock
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import com.dopavin.data.SettingsStore
-
-/**
- * F-219: "Fade between songs". The song fades out over its last seconds and the next one fades in, so changes
- * are not abrupt. This is a fade through silence, not an overlap: a true crossfade needs two players running
- * at once, which this app does not do (background playback reliability, see F-10). Only runs when the owner set
- * a length above 0, never fights the sleep-timer fade, and never touches the last song of the queue.
- */
 class SongFade(context: Context, private val player: Player) {
-
     private val settings = SettingsStore(context.applicationContext)
     private val handler = Handler(Looper.getMainLooper())
-
     private var fadeMs = 0L
     private var readAt = 0L
     private var applied = false
-
     private val tick = object : Runnable {
         override fun run() {
             step()
             handler.postDelayed(this, TICK_MS)
         }
     }
-
     fun start() = handler.post(tick)
-
     fun stop() {
         handler.removeCallbacks(tick)
         release()
     }
-
     private fun step() {
         val now = SystemClock.elapsedRealtime()
         if (now - readAt > 2_000L) {
@@ -66,14 +52,12 @@ class SongFade(context: Context, private val player: Player) {
             applied = volume < 1f
         }
     }
-
     private fun release() {
         if (applied) {
             player.volume = 1f
             applied = false
         }
     }
-
     private companion object {
         const val TICK_MS = 120L
     }

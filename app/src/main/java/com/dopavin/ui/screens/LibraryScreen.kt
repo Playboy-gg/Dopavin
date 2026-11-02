@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -69,12 +68,6 @@ import com.dopavin.ui.components.songCountText
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import kotlinx.coroutines.launch
-
-/**
- * S-04. Downloads (the Library tab, F-110): every song saved inside the app, as Songs / Artists /
- * Liked, with sort and an alphabet fast-scroller. Unfinished downloads sit above the list with their
- * progress. Long-press starts a multi-selection (F-100) with a bottom action bar.
- */
 @Composable
 fun LibraryScreen(
     view: ViewState,
@@ -85,12 +78,9 @@ fun LibraryScreen(
     playlists: List<Playlist>,
     downloads: DownloadsUi,
     actions: MusicActions,
-    /** The Favourites page: every liked song instead of the downloaded ones. */
     favourites: List<Song> = emptyList(),
     isFavourites: Boolean = false,
 ) {
-    // The title, tabs and unfinished downloads are the first item of the list, so they scroll away;
-    // only the glass back button stays where it is (same as the artist and playlist pages).
     val header: @Composable () -> Unit = {
         Column {
             LibraryHeader(view, actions, isFavourites)
@@ -102,11 +92,9 @@ fun LibraryScreen(
         FloatingBackButton(actions::back)
     }
 }
-
 @Composable
 private fun LibraryHeader(view: ViewState, actions: MusicActions, isFavourites: Boolean) {
     Column(Modifier.statusBarsPadding()) {
-        // Room for the fixed glass back button; the title sits below it and scrolls with the page.
         Spacer(Modifier.height(Dimens.touchTarget + Dimens.sm))
         Row(
             Modifier
@@ -121,7 +109,6 @@ private fun LibraryHeader(view: ViewState, actions: MusicActions, isFavourites: 
                     .weight(1f)
                     .semantics { heading() },
             )
-            // With glass: sort + playlists share one pill, settings has its own. Without glass: plain icons as before.
             GlassIconPill {
                 SortSheetButton(view.sort, actions::setSort)
                 IconAction(
@@ -141,8 +128,6 @@ private fun LibraryHeader(view: ViewState, actions: MusicActions, isFavourites: 
         Spacer(Modifier.height(Dimens.md))
     }
 }
-
-/** The sort button opens a bottom sheet (F-109), never a dropdown. */
 @Composable
 private fun SortSheetButton(sort: SortOrder, onSort: (SortOrder) -> Unit) {
     val host = LocalSheetHost.current
@@ -173,8 +158,6 @@ private fun SortSheetButton(sort: SortOrder, onSort: (SortOrder) -> Unit) {
         },
     )
 }
-
-/** Unfinished downloads: one compact row each (progress, cancel or retry). */
 @Composable
 private fun ActiveDownloads(items: List<DownloadItem>, actions: MusicActions) {
     if (items.isEmpty()) return
@@ -257,7 +240,6 @@ private fun ActiveDownloads(items: List<DownloadItem>, actions: MusicActions) {
         }
     }
 }
-
 @Composable
 private fun LibraryContent(
     view: ViewState,
@@ -291,7 +273,6 @@ private fun LibraryContent(
     if (visible.totalSongs == 0) {
         Column(Modifier.fillMaxSize()) {
             header()
-            // Something is still downloading: the list above says so; no "nothing here" yet.
             if (downloads.active.isEmpty()) {
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     EmptyState(
@@ -309,22 +290,15 @@ private fun LibraryContent(
         visible.songs, view.sort, playback, liked, songsById, playlists, actions, header,
     )
 }
-
-// ---- Songs ----
-
 private sealed interface Entry {
     val key: String
-
     class Header(val letter: Char) : Entry {
         override val key: String = "h$letter"
     }
-
     class Item(val song: Song, val index: Int) : Entry {
         override val key: String = "s${song.id}"
     }
 }
-
-/** 'A'..'Z' for letters, '0' for digits, '#' for everything else. */
 private fun sectionOf(title: String): Char {
     val c = title.firstOrNull() ?: return '#'
     return when {
@@ -333,7 +307,6 @@ private fun sectionOf(title: String): Char {
         else -> '#'
     }
 }
-
 @Composable
 private fun SongList(
     songs: List<Song>,
@@ -349,7 +322,6 @@ private fun SongList(
     var playlistPicker by remember { mutableStateOf(false) }
     var newPlaylistDialog by remember { mutableStateOf(false) }
     val selectedSongs = remember(songs, selection) { songs.filter { it.id in selection } }
-
     val grouped = sort == SortOrder.Title
     val entries = remember(songs, grouped) {
         val list = ArrayList<Entry>(songs.size + 32)
@@ -366,7 +338,6 @@ private fun SongList(
         }
         list
     }
-    // Position of each section header inside the LazyColumn (page header is item 0, actions row item 1).
     val headerIndex = remember(entries) {
         val map = LinkedHashMap<Char, Int>()
         entries.forEachIndexed { i, entry -> if (entry is Entry.Header) map[entry.letter] = i + 2 }
@@ -375,7 +346,6 @@ private fun SongList(
     val letters = remember(headerIndex) { headerIndex.keys.toList() }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
@@ -448,7 +418,6 @@ private fun SongList(
                 },
             )
         }
-        // F-100: the multi-selection action bar, only while something is selected.
         if (selection.isNotEmpty()) {
             Column(
                 Modifier
@@ -574,11 +543,8 @@ private fun SongList(
         )
     }
 }
-
-/** Small helper: add/remove one id from the selection set. */
 private fun Set<Long>.toggleId(id: Long): Set<Long> =
     if (id in this) this - id else this + id
-
 @Composable
 private fun SectionLetter(letter: Char) {
     AppText(
@@ -591,9 +557,6 @@ private fun SectionLetter(letter: Char) {
             .semantics { heading() },
     )
 }
-
-// ---- Artists ----
-
 @Composable
 private fun ArtistList(visible: Visible, actions: MusicActions, header: @Composable () -> Unit) {
     LazyColumn(

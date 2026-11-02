@@ -1,5 +1,4 @@
 package com.dopavin
-
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -26,22 +25,14 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-
 class MainActivity : ComponentActivity() {
-
     private val viewModel: MusicViewModel by viewModels()
-
-    // The result is ignored on purpose: playback works without the notification permission.
     private val requestNotifications =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
-
-    /** "Save to device": the system file saver. No storage permission is needed. */
     private val createDocument =
         registerForActivityResult(ActivityResultContracts.CreateDocument("audio/*")) { uri ->
             viewModel.onSaveTarget(uri)
         }
-
-    /** Backup export / import: system file dialogs, no storage permission needed. */
     private val exportBackup =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
             viewModel.onBackupExportTarget(uri)
@@ -50,15 +41,10 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             viewModel.onBackupImportSource(uri)
         }
-
     override fun onCreate(savedInstanceState: Bundle?) {
-        // A crash whose report screen could not open (e.g. it happened in the background) is shown now.
         if (CrashReporter.pending(this) != null) {
             startActivity(android.content.Intent(this, CrashActivity::class.java))
         }
-        // F-106 polish: paint the window in the chosen theme's canvas colour before the first
-        // Compose frame, so the gap after the launcher splash never flashes the wrong colour.
-        // One small synchronous preferences read on the main thread is acceptable here (AGENTS §4).
         val startupSettings = SettingsStore(this).load()
         val startupTheme = startupSettings.theme
         val startupDark = when (startupTheme) {
@@ -79,27 +65,22 @@ class MainActivity : ComponentActivity() {
         )
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
-        // Ask for notifications when music first plays (the person sees why), not at the first launch.
         lifecycleScope.launch {
             viewModel.playback.first { it.isPlaying }
             askNotificationsOnce()
         }
-
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.pendingSave.collect { song ->
                     if (song != null) {
                         val extension = song.uri.lastPathSegment?.substringAfterLast('.', "m4a") ?: "m4a"
                         val name = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_").take(80)
-                        // The state is cleared by onSaveTarget (also on cancel, which returns null).
                         runCatching { createDocument.launch("$name.$extension") }
                             .onFailure { viewModel.clearPendingSave() }
                     }
                 }
             }
         }
-
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.backupRequest.collect { request ->
@@ -114,7 +95,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
         setContent {
             val settings by viewModel.settings.collectAsStateWithLifecycle()
             val dark = when (settings.theme) {
@@ -122,7 +102,6 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.Dark -> true
                 ThemeMode.Light -> false
             }
-            // Keep status / navigation bar icons readable when the app theme differs from the system.
             DisposableEffect(dark) {
                 enableEdgeToEdge(
                     statusBarStyle = if (dark) {
@@ -139,7 +118,6 @@ class MainActivity : ComponentActivity() {
                 onDispose { }
             }
             val playingSong by viewModel.currentSong.collectAsStateWithLifecycle()
-            // Only the dynamic tint reads the artwork colour (cached after the first song).
             val artworkTint = com.dopavin.ui.components.rememberArtworkTint(
                 if (settings.accentTint == com.dopavin.data.AccentTint.DYNAMIC) playingSong?.artworkUri else null,
             )
@@ -155,7 +133,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
     private fun askNotificationsOnce() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         if (!viewModel.shouldAskNotifications()) return

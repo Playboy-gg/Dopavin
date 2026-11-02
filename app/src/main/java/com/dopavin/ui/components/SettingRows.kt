@@ -1,5 +1,4 @@
 package com.dopavin.ui.components
-
 import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
@@ -34,8 +33,6 @@ import androidx.compose.ui.unit.dp
 import com.dopavin.R
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/** Tappable settings row: title, optional subtitle, optional chevron. */
 @Composable
 fun SettingsRow(
     title: String,
@@ -70,8 +67,6 @@ fun SettingsRow(
         }
     }
 }
-
-/** Row with a switch. The whole row toggles; the switch itself is not a second target. */
 @Composable
 fun ToggleRow(
     title: String,
@@ -89,7 +84,7 @@ fun ToggleRow(
             .toggleable(
                 value = checked,
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null, // the Switch itself animates; no row-wide grey overlay
+                indication = null,
                 role = Role.Switch,
                 onValueChange = onCheckedChange,
             )
@@ -115,8 +110,6 @@ fun ToggleRow(
         com.dopavin.ui.glass.GlassSwitch(checked = checked)
     }
 }
-
-/** Themed Material slider with a spoken label and value. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun AppSlider(
@@ -142,7 +135,6 @@ fun AppSlider(
             disabledActiveTrackColor = colors.controlOutline,
             disabledInactiveTrackColor = colors.surfaceHigh,
         ),
-        // No drag handle: just a track that fills up to the value.
         thumb = {},
         track = { state ->
             val span = (valueRange.endInclusive - valueRange.start).coerceAtLeast(1e-6f)

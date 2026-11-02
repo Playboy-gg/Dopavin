@@ -1,33 +1,5 @@
 @file:OptIn(ExperimentalSharedTransitionApi::class)
-
-/*
- * FloatingTabBar v1.0.1 by Elyes Mansour
- * https://github.com/elyesmansour/compose-floating-tab-bar
- * Licensed under the Apache License, Version 2.0
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Vendored from the v1.0.1 tag: the published AAR is compiled against
- * Compose 1.8 and crashes with NoSuchMethodError on
- * SharedTransitionScope.sharedElement under the Compose version this app uses.
- * Compiling the source here keeps it binary-compatible.
- *
- * Local modifications on top of v1.0.1:
- * - Package renamed.
- * - InlineBar/ExpandedBar use Row/Column instead of ConstraintLayout, and the
- *   tab pill + standalone tab cluster is centered (iOS 26 style) instead of
- *   being pinned to opposite screen edges.
- * - The inline/expanded AnimatedContent is center-aligned so the collapse
- *   animation morphs around the center instead of the start edge.
- * - ExpandedTabs grew a draggable selection puck ported from Kyant0's
- *   AndroidLiquidGlass catalog (LiquidBottomTabs/LiquidBottomTab): equal-width
- *   tabs, a spring-damped indicator you can press-drag between tabs (release
- *   snaps to and navigates the nearest tab), a finger-tracking glow, and —
- *   when an optional [Backdrop] is supplied — chromatic lens refraction and
- *   an accent-tinted glass sample of the selected tab's icon showing through
- *   the puck. See [DampedDragAnimation] and [InteractiveHighlight].
- */
 package com.dopavin.ui.glass.floatingtabbar
-
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.animation.AnimatedContent
@@ -132,19 +104,13 @@ import com.dopavin.ui.glass.shapes.ContinuousRoundedRectangle
 import kotlin.math.abs
 import kotlin.math.sign
 import kotlinx.coroutines.launch
-
 private val GooeyPeakBlur = 12.dp
 private const val GooeyDurationMs = 300
-
 private const val PuckRestHighlightAlpha = 0.5f
 private const val PuckRestShadowAlpha = 0.35f
-
 private enum class FloatingTabBarVisual { INLINE, EXPANDED, SEARCH_EXPANDED }
-
 private val SearchBarRowHeight = 48.dp
-
 internal val FloatingTabBarInlineHeight = 52.dp
-
 @android.annotation.SuppressLint("UnusedTransitionTargetStateParameter")
 @Composable
 fun FloatingTabBar(
@@ -169,7 +135,6 @@ fun FloatingTabBar(
     content: FloatingTabBarScope.() -> Unit
 ) {
     val scope = FloatingTabBarScopeImpl(inlineFallbackKey).apply { content() }
-
     if (!searchMode || searchBarContent == null) {
         SharedTransitionLayout(modifier = modifier) {
             GeometricFloatingTabBar(
@@ -204,14 +169,11 @@ fun FloatingTabBar(
         }
         return
     }
-
     val isAccessoryShared = inlineAccessory != null && expandedAccessory != null
-
     val visual = when {
         scrollConnection.isInline -> FloatingTabBarVisual.INLINE
         else -> FloatingTabBarVisual.SEARCH_EXPANDED
     }
-
     val transition = updateTransition(targetState = visual, label = "floatingTabBarVisual")
     val gooeyBlurPx = with(LocalDensity.current) { GooeyPeakBlur.toPx() }
     val gooeyProgress by transition.animateFloat(
@@ -225,7 +187,6 @@ fun FloatingTabBar(
         },
         label = "gooeyProgress"
     ) { _ -> 0f }
-
     SharedTransitionLayout(modifier = modifier) {
         val frozenWhileAnimating = remember(transition) {
             { transition.currentState != transition.targetState }
@@ -295,9 +256,7 @@ fun FloatingTabBar(
         }
     }
 }
-
 internal val LocalTabBarBackdropFrozen = staticCompositionLocalOf<() -> Boolean> { { false } }
-
 class FloatingTabBarScrollConnection(
     initialIsInline: Boolean = false,
     private val scrollThresholdPx: Float,
@@ -306,32 +265,24 @@ class FloatingTabBarScrollConnection(
 ) : NestedScrollConnection {
     var isInline by mutableStateOf(initialIsInline)
         private set
-
     private var accumulatedScroll = 0f
-
     fun expand() {
         isInline = false
         accumulatedScroll = 0f
     }
-
     fun inline() {
         isInline = true
         accumulatedScroll = 0f
     }
-
     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
         if (inlineBehavior == FloatingTabBarInlineBehavior.Never) {
             return Offset.Zero
         }
-
         val scrollDelta = available.y
-
         if ((accumulatedScroll > 0 && scrollDelta < 0) || (accumulatedScroll < 0 && scrollDelta > 0)) {
             accumulatedScroll = 0f
         }
-
         accumulatedScroll += scrollDelta
-
         when (inlineBehavior) {
             FloatingTabBarInlineBehavior.OnScrollDown -> {
                 if (accumulatedScroll <= -scrollThresholdPx && !isInline) {
@@ -342,7 +293,6 @@ class FloatingTabBarScrollConnection(
                     accumulatedScroll = 0f
                 }
             }
-
             FloatingTabBarInlineBehavior.OnScrollUp -> {
                 if (accumulatedScroll >= scrollThresholdPx && !isInline) {
                     isInline = true
@@ -352,15 +302,12 @@ class FloatingTabBarScrollConnection(
                     accumulatedScroll = 0f
                 }
             }
-
             FloatingTabBarInlineBehavior.Never -> {
             }
         }
-
         return Offset.Zero
     }
 }
-
 @Composable
 fun rememberFloatingTabBarScrollConnection(
     initialIsInline: Boolean = false,
@@ -379,15 +326,11 @@ fun rememberFloatingTabBarScrollConnection(
         )
     }
 }
-
 enum class FloatingTabBarInlineBehavior {
     Never,
-
     OnScrollDown,
-
     OnScrollUp
 }
-
 interface FloatingTabBarScope {
     fun tab(
         key: Any,
@@ -396,7 +339,6 @@ interface FloatingTabBarScope {
         onClick: () -> Unit,
         indication: (@Composable () -> Indication)? = { LocalIndication.current }
     )
-
     fun standaloneTab(
         key: Any,
         icon: @Composable () -> Unit,
@@ -405,7 +347,6 @@ interface FloatingTabBarScope {
         title: @Composable () -> Unit = {}
     )
 }
-
 @Composable
 internal fun Modifier.tapClickable(
     indication: Indication?,
@@ -418,7 +359,6 @@ internal fun Modifier.tapClickable(
         interactionSource = interactionSource
     )
 }
-
 @Composable
 private fun SharedTransitionScope.InlineBar(
     scope: FloatingTabBarScopeImpl,
@@ -436,7 +376,6 @@ private fun SharedTransitionScope.InlineBar(
     val inlineTab = scope.getInlineTab(selectedTabKey)
     val standaloneTab = scope.standaloneTab
     val hasInlineTab = inlineTab != null
-
     Row(
         horizontalArrangement = Arrangement.spacedBy(sizes.componentSpacing),
         verticalAlignment = Alignment.CenterVertically,
@@ -461,7 +400,6 @@ private fun SharedTransitionScope.InlineBar(
                     .aspectRatio(1f, matchHeightConstraintsFirst = true)
             )
         }
-
         if (accessory != null) {
             InlineAccessory(
                 accessory = accessory,
@@ -475,7 +413,6 @@ private fun SharedTransitionScope.InlineBar(
                     .fillMaxHeight()
             )
         }
-
         if (standaloneTab != null) {
             InlineStandaloneTab(
                 standaloneTab = standaloneTab,
@@ -493,7 +430,6 @@ private fun SharedTransitionScope.InlineBar(
         }
     }
 }
-
 @Composable
 private fun SharedTransitionScope.InlineTab(
     inlineTab: FloatingTabBarTab,
@@ -550,7 +486,6 @@ private fun SharedTransitionScope.InlineTab(
         )
     }
 }
-
 @Composable
 private fun SharedTransitionScope.InlineStandaloneTab(
     standaloneTab: FloatingTabBarTab,
@@ -564,7 +499,6 @@ private fun SharedTransitionScope.InlineStandaloneTab(
 ) {
     val glowScope = rememberCoroutineScope()
     val glow = remember(glowScope) { InteractiveHighlight(animationScope = glowScope) }
-
     Tab(
         icon = standaloneTab.icon,
         title = standaloneTab.title,
@@ -595,7 +529,6 @@ private fun SharedTransitionScope.InlineStandaloneTab(
             .padding(sizes.tabInlineContentPadding)
     )
 }
-
 @Composable
 private fun SharedTransitionScope.InlineAccessory(
     accessory: (@Composable SharedTransitionScope.(Modifier, AnimatedVisibilityScope) -> Unit)?,
@@ -637,7 +570,6 @@ private fun SharedTransitionScope.InlineAccessory(
         }
     }
 }
-
 @Composable
 private fun SharedTransitionScope.ExpandedBar(
     scope: FloatingTabBarScopeImpl,
@@ -657,10 +589,8 @@ private fun SharedTransitionScope.ExpandedBar(
 ) {
     val hasTabGroup = scope.tabs.isNotEmpty()
     val standaloneTab = scope.standaloneTab
-
     val density = LocalDensity.current
     var tabRowWidthPx by remember { mutableIntStateOf(0) }
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(sizes.componentSpacing),
@@ -681,7 +611,6 @@ private fun SharedTransitionScope.ExpandedBar(
                 }
             )
         }
-
         Row(
             horizontalArrangement = Arrangement.spacedBy(sizes.componentSpacing),
             verticalAlignment = Alignment.CenterVertically,
@@ -708,7 +637,6 @@ private fun SharedTransitionScope.ExpandedBar(
                     modifier = Modifier
                 )
             }
-
             if (standaloneTab != null) {
                 ExpandedStandaloneTab(
                     standaloneTab = standaloneTab,
@@ -727,7 +655,6 @@ private fun SharedTransitionScope.ExpandedBar(
         }
     }
 }
-
 @Composable
 private fun SharedTransitionScope.SearchExpandedBar(
     scope: FloatingTabBarScopeImpl,
@@ -750,7 +677,6 @@ private fun SharedTransitionScope.SearchExpandedBar(
     } else {
         Modifier.fillMaxWidth()
     }
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(sizes.componentSpacing),
@@ -767,7 +693,6 @@ private fun SharedTransitionScope.SearchExpandedBar(
                 modifier = targetWidthModifier
             )
         }
-
         Row(
             horizontalArrangement = Arrangement.spacedBy(sizes.componentSpacing),
             verticalAlignment = Alignment.CenterVertically,
@@ -786,7 +711,6 @@ private fun SharedTransitionScope.SearchExpandedBar(
                     modifier = Modifier.fillMaxHeight()
                 )
             }
-
             searchBarContent(
                 Modifier
                     .weight(1f)
@@ -804,7 +728,6 @@ private fun SharedTransitionScope.SearchExpandedBar(
         }
     }
 }
-
 @Composable
 private fun SharedTransitionScope.ExpandedStandaloneTab(
     standaloneTab: FloatingTabBarTab,
@@ -818,7 +741,6 @@ private fun SharedTransitionScope.ExpandedStandaloneTab(
 ) {
     val glowScope = rememberCoroutineScope()
     val glow = remember(glowScope) { InteractiveHighlight(animationScope = glowScope) }
-
     Tab(
         icon = standaloneTab.icon,
         title = standaloneTab.title,
@@ -849,7 +771,6 @@ private fun SharedTransitionScope.ExpandedStandaloneTab(
             .padding(sizes.tabExpandedContentPadding)
     )
 }
-
 @Composable
 private fun SharedTransitionScope.ExpandedAccessory(
     accessory: @Composable SharedTransitionScope.(Modifier, AnimatedVisibilityScope) -> Unit,
@@ -907,7 +828,6 @@ private fun SharedTransitionScope.ExpandedTabs(
     val tabsCount = allTabs.size
     if (tabsCount == 0) return
     val currentTabs = rememberUpdatedState(allTabs)
-
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val isLtr = layoutDirection == LayoutDirection.Ltr
@@ -921,12 +841,10 @@ private fun SharedTransitionScope.ExpandedTabs(
         Color(28, 27, 28)
     }
     val puckRestAlpha = glassConfig.puckOpacity.coerceIn(0f, 1f)
-
     val tabWidthPx = with(density) { sizes.tabWidth.toPx() }
     val paddingStartPx = with(density) { sizes.tabBarContentPadding.calculateStartPadding(layoutDirection).toPx() }
     val paddingEndPx = with(density) { sizes.tabBarContentPadding.calculateEndPadding(layoutDirection).toPx() }
     val totalWidthPx = tabWidthPx * tabsCount + paddingStartPx + paddingEndPx
-
     val offsetAnimation = remember(tabsCount) { Animatable(0f) }
     val panelOffset by remember(density, totalWidthPx) {
         derivedStateOf {
@@ -936,7 +854,6 @@ private fun SharedTransitionScope.ExpandedTabs(
             }
         }
     }
-
     var currentIndex by remember(tabsCount) {
         mutableIntStateOf(
             allTabs.indexOfFirst { it.key == selectedTabKey }.coerceIn(0, tabsCount - 1)
@@ -959,9 +876,6 @@ private fun SharedTransitionScope.ExpandedTabs(
                 animationScope.launch {
                     offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f))
                 }
-                // The puck sits on top of the selected tab and swallows its touches, so a plain tap on it has to
-                // count as tapping that tab too. Otherwise, with Search open (puck resting on Home), Home could
-                // not be tapped at all.
                 currentTabs.value.getOrNull(targetIndex)?.onClick?.invoke()
             },
             onDrag = { _, dragAmount ->
@@ -978,7 +892,6 @@ private fun SharedTransitionScope.ExpandedTabs(
         )
     }
     var hasSyncedSelection by remember(tabsCount) { mutableStateOf(false) }
-
     if (tabPosition != null) {
         LaunchedEffect(dampedDragAnimation, tabPosition) {
             snapshotFlow { tabPosition() }.collect { position ->
@@ -986,7 +899,6 @@ private fun SharedTransitionScope.ExpandedTabs(
             }
         }
     }
-
     LaunchedEffect(selectedTabKey, tabsCount) {
         val index = allTabs.indexOfFirst { it.key == selectedTabKey }
         if (index != -1) {
@@ -999,7 +911,6 @@ private fun SharedTransitionScope.ExpandedTabs(
             dampedDragAnimation.animateToValue(index.toFloat())
         }
     }
-
     val interactiveHighlight = remember(animationScope) {
         InteractiveHighlight(
             animationScope = animationScope,
@@ -1012,9 +923,7 @@ private fun SharedTransitionScope.ExpandedTabs(
             }
         )
     }
-
     val tabsBackdrop = rememberLayerBackdrop()
-
     Box(modifier.width(with(density) { totalWidthPx.toDp() })) {
         val geometric = LocalGeometricFloatingTabBar.current
         Row(
@@ -1103,7 +1012,6 @@ private fun SharedTransitionScope.ExpandedTabs(
                 )
             }
         }
-
         if (backdrop != null) {
             val tabsBackdropScale = glassResolutionScale(1f)
             Row(
@@ -1136,7 +1044,6 @@ private fun SharedTransitionScope.ExpandedTabs(
                     )
                     .then(interactiveHighlight.modifier)
                     .drawWithContent {
-                        // Compose 1.7 has no graphicsLayer(colorFilter): tint the whole layer instead.
                         val tintPaint = androidx.compose.ui.graphics.Paint().apply {
                             colorFilter = ColorFilter.tint(accentColor)
                         }
@@ -1166,9 +1073,6 @@ private fun SharedTransitionScope.ExpandedTabs(
                 }
             }
         }
-
-        // Without Liquid Glass there is no draggable puck: the selected tab is marked by its accent tint only,
-        // like the classic iOS tab bar, and every tab takes its own taps.
         if (backdrop != null) {
             Box(
                 Modifier
@@ -1190,7 +1094,6 @@ private fun SharedTransitionScope.ExpandedTabs(
                                 effects = {
                                     val progress = dampedDragAnimation.pressProgress
                                     blur(3f.dp.toPx() * (1f - progress))
-
                                     lens(
                                         lerp(0f.dp.toPx(), 10f.dp.toPx(), progress),
                                         lerp(0f.dp.toPx(), 12f.dp.toPx(), progress),
@@ -1220,7 +1123,6 @@ private fun SharedTransitionScope.ExpandedTabs(
                                 },
                                 onDrawSurface = {
                                     val progress = dampedDragAnimation.pressProgress
-
                                     drawRect(puckWash.copy(alpha = puckRestAlpha * (1f - 0.75f * progress)))
                                 },
                                 frozen = LocalTabBarBackdropFrozen.current
@@ -1245,7 +1147,6 @@ private fun SharedTransitionScope.ExpandedTabs(
                         }
                     )
             )
-
             val puckIndex by remember(tabsCount) {
                 derivedStateOf {
                     dampedDragAnimation.value
@@ -1283,7 +1184,6 @@ private fun SharedTransitionScope.ExpandedTabs(
         }
     }
 }
-
 @Composable
 private fun Tab(
     icon: @Composable () -> Unit,
@@ -1319,7 +1219,6 @@ private fun Tab(
         }
     }
 }
-
 @Composable
 private fun Modifier.animateEnterExitAccessory(
     sharedTransitionScope: SharedTransitionScope,
@@ -1332,7 +1231,6 @@ private fun Modifier.animateEnterExitAccessory(
                 else -> 0f
             }
         }
-
         this@animateEnterExitAccessory
             .renderInSharedTransitionScopeOverlay()
             .graphicsLayer(
@@ -1341,7 +1239,6 @@ private fun Modifier.animateEnterExitAccessory(
             )
     }
 }
-
 @Composable
 private fun Modifier.animateEnterExitTab(
     sharedTransitionScope: SharedTransitionScope,
@@ -1351,7 +1248,6 @@ private fun Modifier.animateEnterExitTab(
         val enterStartFraction = 0.5f
         val enterEndFraction = 0.8f
         val durationMs = 150
-
         val animatedAlpha by transition.animateFloat(
             transitionSpec = {
                 keyframes {
@@ -1368,7 +1264,6 @@ private fun Modifier.animateEnterExitTab(
                 else -> 0f
             }
         }
-
         val blurRadius = with(LocalDensity.current) { 50.dp.toPx() }
         val animatedBlur by transition.animateFloat(
             transitionSpec = {
@@ -1386,7 +1281,6 @@ private fun Modifier.animateEnterExitTab(
                 else -> blurRadius
             }
         }
-
         graphicsLayer {
             alpha = animatedAlpha
             renderEffect = BlurEffect(
@@ -1396,24 +1290,19 @@ private fun Modifier.animateEnterExitTab(
         }
     }
 }
-
 internal class FloatingTabBarScopeImpl(private val fallbackInlineKey: Any? = null) : FloatingTabBarScope {
     val tabs = mutableStateListOf<FloatingTabBarTab>()
     var standaloneTab: FloatingTabBarTab? by mutableStateOf(null)
         private set
     private var inlineTab: FloatingTabBarTab? = null
-
     fun getInlineTab(selectedTabKey: Any?): FloatingTabBarTab? {
         val selectedTab = tabs.find { it.key == selectedTabKey }
         if (selectedTab != null) {
             inlineTab = selectedTab
             return selectedTab
         }
-        // The scope is rebuilt on every recomposition, so [inlineTab] alone is lost; when the selected
-        // key is the standalone tab (Search) the caller-supplied last group tab keeps the folded icon.
         return inlineTab ?: tabs.find { it.key == fallbackInlineKey }
     }
-
     override fun tab(
         key: Any,
         title: @Composable () -> Unit,
@@ -1431,7 +1320,6 @@ internal class FloatingTabBarScopeImpl(private val fallbackInlineKey: Any? = nul
             )
         )
     }
-
     override fun standaloneTab(
         key: Any,
         icon: @Composable () -> Unit,
@@ -1448,7 +1336,6 @@ internal class FloatingTabBarScopeImpl(private val fallbackInlineKey: Any? = nul
         )
     }
 }
-
 internal data class FloatingTabBarTab(
     val key: Any,
     val title: @Composable () -> Unit,
@@ -1456,13 +1343,11 @@ internal data class FloatingTabBarTab(
     val onClick: () -> Unit,
     val indication: (@Composable () -> Indication)?
 )
-
 @Immutable
 data class FloatingTabBarColors(
     val backgroundColor: Color,
     val accessoryBackgroundColor: Color,
 )
-
 @Immutable
 data class FloatingTabBarShapes(
     val tabBarShape: Shape,
@@ -1470,13 +1355,11 @@ data class FloatingTabBarShapes(
     val standaloneTabShape: Shape,
     val accessoryShape: Shape,
 )
-
 @Immutable
 data class FloatingTabBarElevations(
     val inlineElevation: Dp,
     val expandedElevation: Dp,
 )
-
 @Immutable
 data class FloatingTabBarSizes(
     val tabBarContentPadding: PaddingValues,
@@ -1486,10 +1369,8 @@ data class FloatingTabBarSizes(
     val tabSpacing: Dp,
     val tabWidth: Dp = FloatingTabBarDefaults.TabWidth,
 )
-
 object FloatingTabBarDefaults {
     val TabWidth: Dp = 88.dp
-
     @Composable
     fun colors(
         backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -1498,7 +1379,6 @@ object FloatingTabBarDefaults {
         backgroundColor = backgroundColor,
         accessoryBackgroundColor = accessoryBackgroundColor,
     )
-
     @Composable
     fun shapes(
         tabBarShape: Shape = ContinuousRoundedRectangle(percent = 50),
@@ -1511,7 +1391,6 @@ object FloatingTabBarDefaults {
         standaloneTabShape = standaloneTabShape,
         accessoryShape = accessoryShape,
     )
-
     @Composable
     fun sizes(
         tabBarContentPadding: PaddingValues = PaddingValues(vertical = 4.dp, horizontal = 4.dp),
@@ -1528,7 +1407,6 @@ object FloatingTabBarDefaults {
         tabSpacing = tabSpacing,
         tabWidth = tabWidth,
     )
-
     @Composable
     fun elevations(
         inlineElevation: Dp = 6.dp,

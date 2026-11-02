@@ -1,14 +1,4 @@
-/*
- * Vendored from Kyant0/AndroidLiquidGlass (kmp branch)
- * https://github.com/Kyant0/AndroidLiquidGlass — Copyright 2025 Kyant0, Apache License 2.0
- * app/src/commonMain/kotlin/com/kyant/backdrop/catalog/utils/InteractiveHighlight.kt
- *
- * Not published as a library — ported straight from the catalog demo app that
- * showcases Kyant0/backdrop, source-only. Package renamed and RuntimeShader
- * imports repointed at this app's vendored com.dopavin.ui.glass.backdrop.
- */
 package com.dopavin.ui.glass.interaction
-
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.VisibilityThreshold
@@ -27,27 +17,22 @@ import com.dopavin.ui.glass.backdrop.asComposeShader
 import com.dopavin.ui.glass.backdrop.isRuntimeShaderSupported
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-
 class InteractiveHighlight(
     val animationScope: CoroutineScope,
     val position: (size: Size, offset: Offset) -> Offset = { _, offset -> offset },
     val radiusScale: Float = 1.5f,
 ) {
-
     private val pressProgressAnimationSpec =
         spring(0.5f, 300f, 0.001f)
     private val positionAnimationSpec =
         spring(0.5f, 300f, Offset.VisibilityThreshold)
-
     private val pressProgressAnimation =
         Animatable(0f, 0.001f)
     private val positionAnimation =
         Animatable(Offset.Zero, Offset.VectorConverter, Offset.VisibilityThreshold)
-
     private var startPosition = Offset.Zero
     val pressProgress: Float get() = pressProgressAnimation.value
     val offset: Offset get() = positionAnimation.value - startPosition
-
     private val shader =
         if (isRuntimeShaderSupported()) {
             RuntimeShader(
@@ -66,7 +51,6 @@ half4 main(float2 coord) {
         } else {
             null
         }
-
     val modifier: Modifier =
         Modifier.drawWithContent {
             val progress = pressProgressAnimation.value
@@ -98,10 +82,8 @@ half4 main(float2 coord) {
                     )
                 }
             }
-
             drawContent()
         }
-
     val gestureModifier: Modifier =
         Modifier.pointerInput(animationScope) {
             inspectDragGestures(

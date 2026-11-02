@@ -1,5 +1,4 @@
 package com.dopavin.ui.components
-
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,13 +31,10 @@ import com.dopavin.data.AccentTint
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.DarkColors
 import com.dopavin.ui.theme.Dimens
-
 private val NAMES = intArrayOf(
     R.string.tint_rose, R.string.tint_orange, R.string.tint_amber, R.string.tint_green,
     R.string.tint_teal, R.string.tint_blue, R.string.tint_indigo, R.string.tint_purple,
 )
-
-/** Accent tint choice: the app's own colours, eight presets, and "Dynamic" (follows the playing song). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TintPicker(selected: Int, onSelect: (Int) -> Unit) {
@@ -84,11 +80,9 @@ fun TintPicker(selected: Int, onSelect: (Int) -> Unit) {
         }
     }
 }
-
 @Composable
 private fun Swatch(fill: Color?, label: String, selected: Boolean, onClick: () -> Unit) {
     val colors = AppTheme.colors
-    // The app's own colours are shown as their gradient, so "default" is recognisable.
     val brush: Brush = fill?.let { SolidColor(it) }
         ?: Brush.linearGradient(listOf(DarkColors.accentStart, DarkColors.accentEnd))
     Box(

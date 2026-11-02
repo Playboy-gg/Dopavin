@@ -1,14 +1,4 @@
-/*
- * Vendored from Kyant0/backdrop v2.0.0 (io.github.kyant0:backdrop)
- * https://github.com/Kyant0/backdrop — Copyright 2025 Kyant0, Apache License 2.0
- *
- * Vendored so the library ships as source with this app (binary AARs compiled
- * against older Compose broke at runtime) and to add a backdrop resolution
- * scale for cheaper effect rendering. KMP expect/actual declarations were
- * merged into this single Android source set. Package renamed accordingly.
- */
 package com.dopavin.ui.glass.backdrop.backdrops
-
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -28,9 +18,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.Density
 import com.dopavin.ui.glass.backdrop.Backdrop
 import com.dopavin.ui.glass.backdrop.internal.InverseLayerScope
-
 private val DefaultOnDraw: ContentDrawScope.() -> Unit = { drawContent() }
-
 @Composable
 fun rememberLayerBackdrop(
     graphicsLayer: GraphicsLayer = rememberGraphicsLayer(),
@@ -40,36 +28,26 @@ fun rememberLayerBackdrop(
         LayerBackdrop(graphicsLayer, onDraw)
     }
 }
-
 @Stable
 class LayerBackdrop internal constructor(
     val graphicsLayer: GraphicsLayer,
     internal val onDraw: ContentDrawScope.() -> Unit
 ) : Backdrop {
-
     override val isCoordinatesDependent: Boolean = true
-
     internal var layerCoordinates: LayoutCoordinates? by mutableStateOf(null)
-
     internal var contentVersion: Int = 0
         private set
-
     internal fun contentRecorded() {
         contentVersion++
     }
-
     internal val staticRegions = ArrayList<Rect>()
-
     internal fun isFullyStatic(rect: Rect): Boolean =
         staticRegions.any { region ->
             region.left <= rect.left && region.top <= rect.top &&
                 region.right >= rect.right && region.bottom >= rect.bottom
         }
-
     internal val hasRecording: Boolean get() = contentVersion > 0
-
     private var inverseLayerScope: InverseLayerScope? = null
-
     override fun DrawScope.drawBackdrop(
         density: Density,
         coordinates: LayoutCoordinates?,
@@ -92,7 +70,6 @@ class LayerBackdrop internal constructor(
             drawLayer(graphicsLayer)
         }
     }
-
     private fun obtainInverseLayerScope(): InverseLayerScope {
         return inverseLayerScope?.apply { reset() }
             ?: InverseLayerScope().also { inverseLayerScope = it }

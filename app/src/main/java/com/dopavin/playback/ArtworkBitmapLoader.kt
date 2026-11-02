@@ -1,5 +1,4 @@
 package com.dopavin.playback
-
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -14,20 +13,11 @@ import com.dopavin.data.ArtworkSize
 import java.io.FileNotFoundException
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
-
-/**
- * Lets the media notification and lock screen show artwork for local audio files.
- * The MediaItem's artworkUri is the audio content URI itself; this loader resolves it
- * with the same code the UI uses.
- */
 @OptIn(UnstableApi::class)
 class ArtworkBitmapLoader(context: Context) : BitmapLoader {
-
     private val appContext = context.applicationContext
     private val executor = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor())
-
     override fun supportsMimeType(mimeType: String): Boolean = mimeType.startsWith("image/")
-
     override fun decodeBitmap(data: ByteArray): ListenableFuture<Bitmap> =
         executor.submit(
             Callable<Bitmap> {
@@ -35,7 +25,6 @@ class ArtworkBitmapLoader(context: Context) : BitmapLoader {
                     ?: throw IllegalArgumentException("Artwork bytes could not be decoded")
             },
         )
-
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
         executor.submit(
             Callable<Bitmap> {

@@ -1,24 +1,10 @@
 package com.dopavin.data
-
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import java.util.concurrent.ConcurrentHashMap
-
-/**
- * Smart lyrics fallback: runs the queries of a [LyricsQueryPlan] one after another until one wins.
- * Pure Kotlin on top of [raceLyrics]; providers are injected, so tests use fakes (no network).
- *
- * - Each step races only the providers that can still help: a provider that failed (network error,
- *   rate limit) is dropped for the rest of the song, so an outage or a limit is never hammered with
- *   variants; a provider that needs an artist skips artist-less queries.
- * - A provider that answered "no lyrics" for a query is remembered for [MissCache.ttlMs] and not asked
- *   the same thing again (retry with `ignoreMisses` skips that memory).
- * - Artist-less queries ([LyricsQuery.strict]) only accept a close title match ([STRICT_MIN_CONFIDENCE]).
- * - The whole search has a time budget; when it runs out the answer is TimedOut (not cached).
- */
 class LyricsFallback(
     private val misses: MissCache = MissCache(),
     private val config: RaceConfig = RaceConfig(),
@@ -46,7 +32,6 @@ class LyricsFallback(
             val gated = if (query.strict) step.map { StrictGate(it) } else step
             val result = raceLyrics(gated, query, config)
             for ((id, outcome) in result.outcomes) {
-                // Keep the most informative outcome per provider: a failure beats a plain miss.
                 val old = outcomes[id]
                 if (old == null || isMissLike(old) || !isMissLike(outcome)) outcomes[id] = outcome
                 when (outcome) {
@@ -67,16 +52,11 @@ class LyricsFallback(
         }
         return if (failed) RaceResult.Failed(outcomes) else RaceResult.NoLyrics(outcomes)
     }
-
     private fun isMissLike(o: ProviderOutcome) = o is ProviderOutcome.NotFound || o is ProviderOutcome.InvalidResponse
-
     companion object {
-        /** An artist-less hit needs exact title (0.5) and a known duration that fits (0.1-0.2) plus the neutral artist 0.15. */
         const val STRICT_MIN_CONFIDENCE = 0.75f
     }
 }
-
-/** Turns a weak answer of an artist-less query into "not found", so a similar title never wins by luck. */
 internal class StrictGate(private val inner: LyricsProvider) : LyricsProvider {
     override val id get() = inner.id
     override val capabilities get() = inner.capabilities
@@ -89,15 +69,10 @@ internal class StrictGate(private val inner: LyricsProvider) : LyricsProvider {
         }
     }
 }
-
-/** Remembers, for a limited time, which provider had nothing for which query. In memory only. */
 class MissCache(val ttlMs: Long = 6L * 60 * 60 * 1000, private val max: Int = 400) {
     private val map = LinkedHashMap<String, Long>()
-
-    /** What was really asked: the strings as sent (a provider may treat "Song (Live)" and "Song" differently). */
     private fun key(provider: String, q: LyricsQuery) =
         provider + "|" + q.title.trim().lowercase() + "|" + q.artist.trim().lowercase() + "|" + q.album.trim().lowercase()
-
     @Synchronized
     fun isMiss(provider: String, q: LyricsQuery, nowMs: Long): Boolean {
         val k = key(provider, q)
@@ -105,7 +80,6 @@ class MissCache(val ttlMs: Long = 6L * 60 * 60 * 1000, private val max: Int = 40
         if (nowMs - at > ttlMs) { map.remove(k); return false }
         return true
     }
-
     @Synchronized
     fun remember(provider: String, q: LyricsQuery, nowMs: Long) {
         val k = key(provider, q)
@@ -114,15 +88,8 @@ class MissCache(val ttlMs: Long = 6L * 60 * 60 * 1000, private val max: Int = 40
         while (map.size > max) map.remove(map.keys.first())
     }
 }
-
-/**
- * One running job per key: a second caller for the same key waits for the first one instead of
- * starting its own request. The work runs in [scope], so a caller that goes away (song changed)
- * does not cancel it for the others, and the answer still lands in the cache.
- */
 class SingleFlight<K : Any, V>(private val scope: CoroutineScope) {
     private val running = ConcurrentHashMap<K, Deferred<V>>()
-
     suspend fun run(key: K, block: suspend () -> V): V {
         val mine = CompletableDeferred<V>()
         val existing = running.putIfAbsent(key, mine)

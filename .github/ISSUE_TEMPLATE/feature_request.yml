@@ -7,7 +7,6 @@ body:
     attributes:
       value: |
         Dopavin has a focused scope. Please read the README and search the existing issues before requesting a feature. Not every idea will be accepted.
-
   - type: checkboxes
     id: checks
     attributes:
@@ -19,7 +18,6 @@ body:
           required: true
         - label: This is not a security problem (those go through SECURITY.md).
           required: true
-
   - type: dropdown
     id: area
     attributes:
@@ -37,7 +35,6 @@ body:
         - Other
     validations:
       required: true
-
   - type: textarea
     id: problem
     attributes:
@@ -46,7 +43,6 @@ body:
       placeholder: "When I ..., I cannot ..., so I have to ..."
     validations:
       required: true
-
   - type: textarea
     id: proposal
     attributes:
@@ -54,7 +50,6 @@ body:
       description: Describe the behaviour, the screen and the states you expect.
     validations:
       required: true
-
   - type: textarea
     id: alternatives
     attributes:

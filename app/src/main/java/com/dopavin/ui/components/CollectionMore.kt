@@ -1,14 +1,8 @@
 package com.dopavin.ui.components
-
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.dopavin.R
-
-/**
- * The round "more" button of radio, mix and playlist pages (F-200). The page keeps Play and Shuffle in view;
- * everything else (save as playlist, download all, add all to queue, ...) lives in the anchored menu this opens.
- */
 @Composable
 fun CollectionMoreButton(
     title: String,

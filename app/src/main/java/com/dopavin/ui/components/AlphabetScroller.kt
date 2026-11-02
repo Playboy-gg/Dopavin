@@ -1,5 +1,4 @@
 package com.dopavin.ui.components
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -26,14 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/** Display text of a section letter: digits are grouped as "0-9" (stored as '0'). */
 fun sectionLabel(letter: Char): String = if (letter == '0') "0-9" else letter.toString()
-
-/**
- * Fast-scroll index along the end edge. Touch or drag on it to jump to a letter; a bubble shows the
- * letter being selected. Hidden from accessibility (TalkBack users scroll the list normally).
- */
 @Composable
 fun AlphabetScroller(
     letters: List<Char>,
@@ -43,7 +35,6 @@ fun AlphabetScroller(
     if (letters.size < 2) return
     val colors = AppTheme.colors
     var active by remember { mutableStateOf<Char?>(null) }
-
     fun pick(y: Float, height: Int) {
         if (height <= 0) return
         val index = (y / height * letters.size).toInt().coerceIn(0, letters.size - 1)
@@ -53,7 +44,6 @@ fun AlphabetScroller(
             onSelect(letter)
         }
     }
-
     Box(modifier.fillMaxSize()) {
         active?.let { letter ->
             Box(

@@ -1,5 +1,4 @@
 package com.dopavin.ui.components
-
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
@@ -73,11 +72,6 @@ import androidx.compose.ui.unit.dp
 import com.dopavin.R
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/**
- * Draws the focus ring token around a focusable control. Must be placed BEFORE .clickable()
- * in the modifier chain, because onFocusChanged observes the focus target that follows it.
- */
 fun Modifier.focusRing(shape: Shape): Modifier = composed {
     var focused by remember { mutableStateOf(false) }
     val ring = AppTheme.colors.focusRing
@@ -85,18 +79,6 @@ fun Modifier.focusRing(shape: Shape): Modifier = composed {
         .onFocusChanged { focused = it.isFocused }
         .then(if (focused) Modifier.border(Dimens.focusRingWidth, ring, shape) else Modifier)
 }
-
-/**
- * Clickable whose only press feedback is a small spring scale (skipped with reduce-motion).
- *
- * No indication is drawn on purpose. The default Material ripple is painted on the clickable's own
- * rectangular bounds, and the clip / background modifiers that follow it in the chain do not clip
- * it, so it showed up as a grey rectangle behind round buttons. Put it first in the chain; clip /
- * background / focusRing come after it.
- *
- * [onLongClick] uses combinedClickable. Never add a separate detectTapGestures for long-press next
- * to a click: it consumes the tap and the click never fires (the Home "song does not play" bug).
- */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 fun Modifier.clickableScale(
     enabled: Boolean = true,
@@ -133,15 +115,12 @@ fun Modifier.clickableScale(
                 }
             },
             onClick = {
-                // A menu opened by this click appears next to this element (see MenuAnchor).
                 MenuAnchor.record(holder.coords)
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                 onClick()
             },
         )
 }
-
-/** Text with an explicit colour and a single-line ellipsis by default. */
 @Composable
 fun AppText(
     text: String,
@@ -162,11 +141,6 @@ fun AppText(
         textAlign = textAlign,
     )
 }
-
-/**
- * One-line text that scrolls sideways (marquee) when it is wider than its space, e.g. a very long
- * song title; short text stays still. The edges clip, no ellipsis.
- */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun MarqueeText(
@@ -176,10 +150,7 @@ fun MarqueeText(
     color: Color = AppTheme.colors.textPrimary,
     textAlign: TextAlign? = null,
 ) {
-    // Reduce motion: no scrolling text, the title is cut with an ellipsis instead.
     val reduce = AppTheme.motion.reduce
-    // Both ends fade out while the text is wider than its space, so letters slide in and out softly
-    // instead of being chopped by a hard edge. Short text that fits is left untouched.
     var overflowing by androidx.compose.runtime.remember(text) { androidx.compose.runtime.mutableStateOf(false) }
     val fade = MARQUEE_FADE
     Text(
@@ -200,10 +171,7 @@ fun MarqueeText(
         onTextLayout = { overflowing = it.hasVisualOverflow },
     )
 }
-
 private val MARQUEE_FADE = 14.dp
-
-/** Fades the left and right [width] of the content to transparent (offscreen layer + DstIn mask). */
 private fun Modifier.fadingEdges(width: androidx.compose.ui.unit.Dp): Modifier = this
     .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
     .drawWithContent {
@@ -221,8 +189,6 @@ private fun Modifier.fadingEdges(width: androidx.compose.ui.unit.Dp): Modifier =
             blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
         )
     }
-
-/** Icon-only button. The hit area is [size] (48dp minimum), the glyph is [iconSize]. */
 @Composable
 fun IconAction(
     @DrawableRes icon: Int,
@@ -234,7 +200,6 @@ fun IconAction(
     container: Color = Color.Transparent,
     size: Dp = Dimens.touchTarget,
     iconSize: Dp = Dimens.iconControl,
-    /** Liquid-glass disc behind the glyph (solid [container] when glass is off). */
     glass: Boolean = false,
 ) {
     val shownTint = if (enabled) tint else tint.copy(alpha = 0.38f)
@@ -261,11 +226,6 @@ fun IconAction(
         )
     }
 }
-
-/**
- * One glass pill holding several header icons (liquid glass; [fallback] colour when glass is off,
- * transparent = no pill at all). Place [IconAction]s with `glass = false` inside.
- */
 @Composable
 fun GlassIconPill(
     modifier: Modifier = Modifier,
@@ -278,11 +238,6 @@ fun GlassIconPill(
         content = content,
     )
 }
-
-/**
- * Shuffle / repeat style toggle. The active state is the accent colour AND a dot under the glyph,
- * plus the spoken description, so it never relies on colour alone.
- */
 @Composable
 fun ToggleIconAction(
     @DrawableRes icon: Int,
@@ -320,8 +275,6 @@ fun ToggleIconAction(
         }
     }
 }
-
-/** Primary call to action: brand gradient pill, optional leading icon. */
 @Composable
 fun GradientButton(
     text: String,
@@ -356,8 +309,6 @@ fun GradientButton(
         AppText(text, AppTheme.type.label, color = colors.onAccent)
     }
 }
-
-/** Secondary action: tonal pill. */
 @Composable
 fun TonalButton(
     text: String,
@@ -365,7 +316,6 @@ fun TonalButton(
     modifier: Modifier = Modifier,
     @DrawableRes icon: Int? = null,
     description: String? = null,
-    /** Accent-tinted glass for the one prominent action of a screen (Subscribe, View source). */
     accent: Boolean = false,
 ) {
     val colors = AppTheme.colors
@@ -398,8 +348,6 @@ fun TonalButton(
         AppText(text, AppTheme.type.label, color = if (accent) colors.onAccent else colors.textPrimary)
     }
 }
-
-/** Selectable pill (library sections). Selected = solid accent gradient + bold label; also announced as selected. */
 @Composable
 fun SelectChip(
     text: String,
@@ -437,8 +385,6 @@ fun SelectChip(
         )
     }
 }
-
-/** Big round play / pause button with the brand gradient. The glyph cross-fades. */
 @Composable
 fun PlayPauseButton(
     playing: Boolean,
@@ -482,12 +428,6 @@ fun PlayPauseButton(
         }
     }
 }
-
-/**
- * Seek bar drawn on a canvas: rounded track that thickens while dragging, brand-gradient progress,
- * round thumb, elapsed and remaining time. While dragging, the labels follow the finger and the
- * player is only seeked on release. Exposed to accessibility as an adjustable progress bar.
- */
 @Composable
 fun SeekBar(
     positionMs: Long,
@@ -499,11 +439,9 @@ fun SeekBar(
     val colors = AppTheme.colors
     val type = AppTheme.type
     val enabled = durationMs > 0L
-
     var dragging by remember { mutableStateOf(false) }
     var dragFraction by remember { mutableFloatStateOf(0f) }
     var widthPx by remember { mutableIntStateOf(1) }
-
     val fraction = when {
         dragging -> dragFraction
         enabled -> (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
@@ -516,7 +454,6 @@ fun SeekBar(
     val total = if (enabled) formatTime(durationMs) else unknown
     val seekLabel = stringResource(R.string.seek_label)
     val seekState = stringResource(R.string.seek_state, elapsed, total)
-
     val trackHeight by animateDpAsState(
         targetValue = if (dragging) Dimens.seekTrackActive else Dimens.seekTrack,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
@@ -526,7 +463,6 @@ fun SeekBar(
     val gradient = colors.gradientHorizontal
     val gradientStart = colors.accentStart
     val gradientEnd = colors.accentEnd
-
     Column(modifier) {
         Box(
             Modifier
@@ -574,7 +510,7 @@ fun SeekBar(
             contentAlignment = Alignment.Center,
         ) {
             Canvas(Modifier.fillMaxWidth().height(Dimens.seekTouchHeight)) {
-                val thumbRadius = 0f // no drag handle; the track thickens while dragging
+                val thumbRadius = 0f
                 val h = trackHeight.toPx()
                 val left = thumbRadius
                 val usable = (this.size.width - thumbRadius * 2f).coerceAtLeast(1f)
@@ -612,4 +548,3 @@ fun SeekBar(
         }
     }
 }
-

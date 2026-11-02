@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -83,10 +82,6 @@ import com.dopavin.ui.components.clickableScale
 import com.dopavin.ui.components.placeholderBrush
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-
-/** S-03. Search. Landing: recent searches, browse tiles with live counts, popular artists. Results: a
- * "top result" hero, then artists, albums, a short songs list and YouTube (owner F-80).
- * "Did you mean" and scope chips sit under the field. */
 @Composable
 fun SearchScreen(
     view: ViewState,
@@ -103,7 +98,6 @@ fun SearchScreen(
     var filter by rememberSaveable { mutableStateOf(SearchFilter.All) }
     val suggestion = searchUi.suggestion?.takeIf { searchUi.forQuery == query && query.isNotEmpty() }
     val commit = { if (query.isNotEmpty()) actions.commitSearch(query) }
-
     Column(Modifier.fillMaxSize()) {
         Column(
             Modifier
@@ -153,10 +147,7 @@ fun SearchScreen(
         }
     }
 }
-
 private enum class SearchFilter { All, Songs, Artists, Albums, Online }
-
-/** Scope chips under the field. */
 @Composable
 private fun FilterRow(selected: SearchFilter, showOnline: Boolean, onSelect: (SearchFilter) -> Unit) {
     val filters = SearchFilter.entries.filter { it != SearchFilter.Online || showOnline }
@@ -179,8 +170,6 @@ private fun FilterRow(selected: SearchFilter, showOnline: Boolean, onSelect: (Se
         }
     }
 }
-
-/** "Did you mean X?" - one tap replaces the query. The suggestion only uses names the user has. */
 @Composable
 private fun DidYouMean(suggestion: String, onClick: () -> Unit) {
     val colors = AppTheme.colors
@@ -210,11 +199,7 @@ private fun DidYouMean(suggestion: String, onClick: () -> Unit) {
         AppText("?", AppTheme.type.body, color = colors.textSecondary)
     }
 }
-
-// ---------------------------------------------------------------- landing
-
 private class Tile(val label: Int, val count: String, val icon: Int, val liked: Boolean, val sort: SortOrder?)
-
 @Composable
 private fun Landing(visible: Visible, likedCount: Int, recents: List<String>, actions: MusicActions) {
     val tiles = listOf(
@@ -293,7 +278,6 @@ private fun Landing(visible: Visible, likedCount: Int, recents: List<String>, ac
         }
     }
 }
-
 @Composable
 private fun BrowseTileCard(tile: Tile, modifier: Modifier, onClick: () -> Unit) {
     val name = stringResource(tile.label)
@@ -323,8 +307,6 @@ private fun BrowseTileCard(tile: Tile, modifier: Modifier, onClick: () -> Unit) 
         }
     }
 }
-
-/** A recent search as a glass pill: tap to search again, x to forget it. */
 @Composable
 private fun RecentChip(text: String, onClick: () -> Unit, onRemove: () -> Unit) {
     val colors = AppTheme.colors
@@ -353,16 +335,11 @@ private fun RecentChip(text: String, onClick: () -> Unit, onRemove: () -> Unit) 
         )
     }
 }
-
-// ---------------------------------------------------------------- results
-
 private sealed interface Top {
     data class ArtistTop(val artist: Artist) : Top
     data class AlbumTop(val album: Album) : Top
     data class SongTop(val song: Song, val index: Int) : Top
 }
-
-/** The best single answer: an artist or album named like the query, else the first song. */
 private fun topResult(query: String, results: Visible): Top? {
     val q = SearchAssist.norm(query)
     results.artists.firstOrNull { SearchAssist.norm(it.name) == q }?.let { return Top.ArtistTop(it) }
@@ -373,7 +350,6 @@ private fun topResult(query: String, results: Visible): Top? {
     results.albums.firstOrNull()?.let { return Top.AlbumTop(it) }
     return null
 }
-
 @Composable
 private fun TopResultCard(top: Top, results: Visible, onCommit: () -> Unit, actions: MusicActions) {
     val colors = AppTheme.colors
@@ -429,9 +405,7 @@ private fun TopResultCard(top: Top, results: Visible, onCommit: () -> Unit, acti
         }
     }
 }
-
 private data class TopInfo(val title: String, val type: String, val detail: String, val uri: android.net.Uri?, val round: Boolean)
-
 @Composable
 private fun ResultsContent(
     query: String,
@@ -478,7 +452,6 @@ private fun ResultsContent(
                             avatarSize = 96.dp,
                         )
                     }
-                    // Genuine artist channels from YouTube; tap opens that channel's page.
                     items(online.artists, key = { "oa_${it.url}" }) { hit ->
                         OnlineArtistCard(hit, onClick = { onCommit(); actions.openArtistProfile(hit.name, hit.url) })
                     }
@@ -561,7 +534,6 @@ private fun ResultsContent(
                         favorite = song.id in liked,
                         onToggleFavorite = { actions.toggleLike(song.id) },
                         onOpenDetails = { actions.openSongDetails(song) },
-                        // Online songs have no file: hide and share stay out of the menu.
                     )
                 }
             }
@@ -582,8 +554,6 @@ private fun ResultsContent(
         }
     }
 }
-
-/** Placeholder row while YouTube answers: same height as a song row, so nothing jumps. */
 @Composable
 private fun SkeletonRow(index: Int) {
     val colors = AppTheme.colors
@@ -602,8 +572,6 @@ private fun SkeletonRow(index: Int) {
         }
     }
 }
-
-/** A single quiet line of text for the YouTube section (unreachable). */
 @Composable
 private fun OnlineHint(text: String) {
     AppText(
@@ -616,8 +584,6 @@ private fun OnlineHint(text: String) {
             .padding(horizontal = Dimens.screenEdge, vertical = Dimens.sm),
     )
 }
-
-
 @Composable
 private fun OnlineArtistCard(hit: ArtistPick.Hit, onClick: () -> Unit) {
     val description = stringResource(R.string.search_artist_channel_desc, hit.name)

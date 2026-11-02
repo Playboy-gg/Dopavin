@@ -1,5 +1,4 @@
 package com.dopavin.ui.screens
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,8 +42,6 @@ import com.dopavin.ui.components.clickableScale
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import java.util.TimeZone
-
-/** F-190. Listening statistics for 7 days, 30 days or all time; everything is computed from the on-device [ListenEntry] log. */
 @Composable
 fun RecapScreen(entries: List<ListenEntry>, actions: MusicActions) {
     val colors = AppTheme.colors
@@ -173,10 +170,8 @@ fun RecapScreen(entries: List<ListenEntry>, actions: MusicActions) {
         )
     }
 }
-
 private fun Modifier.fillMaxHeightFraction(fraction: Float): Modifier =
     this.height((96 * fraction.coerceIn(0.04f, 1f)).dp)
-
 @Composable
 private fun Stat(value: String, label: String, modifier: Modifier = Modifier) {
     val colors = AppTheme.colors
@@ -189,7 +184,6 @@ private fun Stat(value: String, label: String, modifier: Modifier = Modifier) {
         AppText(label, AppTheme.type.caption, color = colors.textSecondary)
     }
 }
-
 @Composable
 private fun RankRow(
     rank: Int,

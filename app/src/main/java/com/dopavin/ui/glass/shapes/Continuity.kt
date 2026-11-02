@@ -1,13 +1,4 @@
-/*
- * Vendored from Kyant0/Capsule
- * https://github.com/Kyant0/Capsule — Copyright 2025 Kyant0, Apache License 2.0
- * capsule/src/main/java/com/kyant/capsule/Continuity.kt
- *
- * Vendored so the shape ships as source with this app. Package renamed
- * accordingly (com.kyant.capsule -> com.dopavin.ui.glass.shapes).
- */
 package com.dopavin.ui.glass.shapes
-
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.geometry.Size
@@ -15,10 +6,8 @@ import androidx.compose.ui.graphics.Outline
 import com.dopavin.ui.glass.shapes.continuities.G2Continuity
 import com.dopavin.ui.glass.shapes.path.PathSegments
 import com.dopavin.ui.glass.shapes.path.toPath
-
 @Immutable
 interface Continuity {
-
     fun createRoundedRectanglePathSegments(
         width: Double,
         height: Double,
@@ -27,7 +16,6 @@ interface Continuity {
         bottomRight: Double,
         bottomLeft: Double
     ): PathSegments
-
     fun createRoundedRectangleOutline(
         size: Size,
         topLeft: Float,
@@ -46,7 +34,6 @@ interface Continuity {
             ).toPath()
         return Outline.Generic(path)
     }
-
     fun createCapsuleOutline(size: Size): Outline {
         val radius = size.minDimension * 0.5f
         return createRoundedRectangleOutline(
@@ -57,11 +44,8 @@ interface Continuity {
             bottomLeft = radius
         )
     }
-
     fun lerp(stop: Continuity, fraction: Double): Continuity
-
     companion object {
-
         @Stable
         val Default: Continuity = G2Continuity()
     }
