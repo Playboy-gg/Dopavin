@@ -1,7 +1,16 @@
 package com.dopavin.data
+
 import android.content.Context
+
 enum class ThemeMode { System, Dark, Light }
+
+/** Audio quality ladder shared by streaming and downloads. High = best stream the provider offers. */
 enum class AudioQuality { High, Standard, DataSaver }
+
+/**
+ * The stream quality to use right now: the Wi-Fi choice on an unmetered connection, the mobile-data choice
+ * on a metered one. When the network state cannot be read, the Wi-Fi choice is used.
+ */
 fun AppSettings.effectiveStreamQuality(context: android.content.Context): AudioQuality {
     val metered = runCatching {
         val cm = context.applicationContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
@@ -9,46 +18,85 @@ fun AppSettings.effectiveStreamQuality(context: android.content.Context): AudioQ
     }.getOrDefault(false)
     return if (metered) streamQualityMobile else streamQuality
 }
+
+/** User-facing options from the Settings screen. */
 data class AppSettings(
     val theme: ThemeMode = ThemeMode.System,
+    /** Dark theme with a true-black canvas (saves power on OLED screens). */
     val pureBlack: Boolean = false,
+    /** Accent tint: 0 = app colours, 1..n = preset, -1 = follows the playing song (see AccentTint). */
     val accentTint: Int = 0,
     val skipSilence: Boolean = false,
+    /** Pause when headphones / Bluetooth disconnect. */
     val pauseOnUnplug: Boolean = true,
+    /** Keep the display on while the full player is open. */
     val keepScreenOn: Boolean = false,
+    /** F-197: vibration feedback on taps and tab changes. */
     val haptics: Boolean = true,
+    /** Changing the speed keeps the pitch (time-stretch). Off = pitch follows speed (vinyl feel). */
     val keepPitch: Boolean = true,
+    /** The sleep timer fades the volume out over its last seconds instead of cutting the music. */
     val sleepFade: Boolean = true,
+    /** Fetch lyrics from LRCLIB (sends title, artist, album, duration). */
     val lyricsOnline: Boolean = true,
+    /** Lyrics provider choice: "choose" (race all providers) or a provider id. */
     val lyricsProvider: String = LyricsProviders.CHOOSE,
+    /** Search and Home list YouTube Music songs; playback streams from the network. */
     val onlinePlayback: Boolean = true,
+    /** Append generated picks near the queue's end (owner spec §8.2 Smart Autoplay). */
     val autoplay: Boolean = true,
+    /** F-205: autoplay leaves out songs the user listened to recently. */
     val autoplayFresh: Boolean = true,
+    /** F-219: seconds the song fades out / the next fades in; 0 = off. */
     val fadeSeconds: Int = 0,
+    /** F-206: look for a newer GitHub release when the app opens (at most twice a day). */
     val autoUpdateCheck: Boolean = true,
+    /** F-203: the current lyric line under the artist in Now Playing. */
     val lyricStrip: Boolean = false,
+    /** Which stream the player picks when a song is not downloaded. */
     val streamQuality: AudioQuality = AudioQuality.High,
+    /** F-192: quality used while the connection is metered (mobile data); High = same as Wi-Fi. */
     val streamQualityMobile: AudioQuality = AudioQuality.High,
+    /** Which stream a download keeps. */
     val downloadQuality: AudioQuality = AudioQuality.High,
+    /** Downloads wait for an unmetered (Wi-Fi) connection. */
     val downloadWifiOnly: Boolean = false,
+    /** Liking a song also downloads it. */
     val autoDownloadLiked: Boolean = false,
+    /** Download cache limit in MB; 0 = unlimited. Over the limit the oldest downloads are removed. */
     val downloadLimitMb: Int = 0,
+    /** Resume music when headphones / Bluetooth reconnect shortly after they dropped. */
     val resumeOnConnect: Boolean = false,
+    /** Now Playing background glows with the song's artwork colours, spreading from the top. */
     val ambience: Boolean = true,
+    /** Liquid-glass surfaces (needs Android 12+ for blur, 13+ for the lens). */
     val glassEnabled: Boolean = true,
+    /** Backdrop blur radius, dp (0..40). */
     val glassBlur: Int = 16,
+    /** Lens (edge refraction) height, dp (0..32). 0 disables the lens. */
     val glassLensHeight: Int = 12,
+    /** Lens strength, percent (0..100). */
     val glassRefraction: Int = 50,
+    /** Colour tint laid over the glass, percent (0..60). */
     val glassTint: Int = 18,
+    /** Colour saturation of what shows through, percent (100..200). */
     val glassSaturation: Int = 150,
+    /** Rim-light brightness, percent (0..100). */
     val glassHighlight: Int = 60,
+    /** Soft drop shadow under floating glass, percent (0..100). */
     val glassShadow: Int = 40,
+    /** Render resolution of the glass, percent (40..100). Lower = faster, softer. */
     val glassQuality: Int = 60,
+    /** Rainbow edge fringe on the lens (Android 13+, costs more GPU). */
     val glassDispersion: Boolean = false,
 )
+
+/** SharedPreferences for settings and the equaliser. Read on any thread; writes use apply(). */
 class SettingsStore(context: Context) {
+
     private val prefs = context.applicationContext
         .getSharedPreferences("settings", Context.MODE_PRIVATE)
+
     fun load(): AppSettings = AppSettings(
         theme = ThemeMode.values().getOrElse(prefs.getInt(KEY_THEME, 0)) { ThemeMode.System },
         pureBlack = prefs.getBoolean(KEY_PURE_BLACK, false),
@@ -89,6 +137,7 @@ class SettingsStore(context: Context) {
         glassQuality = prefs.getInt("glass_quality", 60).coerceIn(40, 100),
         glassDispersion = prefs.getBoolean("glass_dispersion", false),
     )
+
     fun save(settings: AppSettings) {
         prefs.edit()
             .putInt(KEY_THEME, settings.theme.ordinal)
@@ -128,9 +177,17 @@ class SettingsStore(context: Context) {
             .putBoolean("glass_dispersion", settings.glassDispersion)
             .apply()
     }
+
+    // ---- Playback speed ----
+
+    /** Percent: 50..200, 100 = normal. */
     var speedPercent: Int
         get() = prefs.getInt(KEY_SPEED, 100)
         set(value) = prefs.edit().putInt(KEY_SPEED, value).apply()
+
+    // ---- Liked songs ----
+
+    /** Ids of liked songs (stable online ids). */
     var likedIds: Set<Long>
         get() = prefs.getString(KEY_LIKED, null)
             ?.split(",")
@@ -138,6 +195,10 @@ class SettingsStore(context: Context) {
             ?.toSet()
             ?: emptySet()
         set(value) = prefs.edit().putString(KEY_LIKED, value.joinToString(",")).apply()
+
+    // ---- Backup ----
+
+    /** Every stored preference (settings, equaliser, speed) as JSON, except the liked ids (exported separately). */
     fun exportPrefs(): org.json.JSONObject {
         val out = org.json.JSONObject()
         for ((key, value) in prefs.all) {
@@ -150,6 +211,8 @@ class SettingsStore(context: Context) {
         }
         return out
     }
+
+    /** Applies [json] from a backup. Only keys that look like our own preference names are accepted. */
     fun importPrefs(json: org.json.JSONObject) {
         val edit = prefs.edit()
         for (key in json.keys()) {
@@ -163,6 +226,9 @@ class SettingsStore(context: Context) {
         }
         edit.apply()
     }
+
+    /** Restore defaults: replaces every user-tweak key with its stock value. Likes are preserved
+     * deliberately (they are curation, not app preferences). */
     fun restoreDefaults() {
         save(AppSettings())
         prefs.edit()
@@ -174,24 +240,36 @@ class SettingsStore(context: Context) {
             .putInt(KEY_LOUDNESS, 0)
             .apply()
     }
+
+    // ---- Equaliser ----
+
     var eqEnabled: Boolean
         get() = prefs.getBoolean(KEY_EQ_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_EQ_ENABLED, value).apply()
+
+    /** Index of a system preset, or -1 for custom band levels. */
     var eqPreset: Int
         get() = prefs.getInt(KEY_EQ_PRESET, -1)
         set(value) = prefs.edit().putInt(KEY_EQ_PRESET, value).apply()
+
+    /** Band levels in millibels, or null when never customised. */
     var eqLevels: List<Int>?
         get() = prefs.getString(KEY_EQ_LEVELS, null)
             ?.split(",")
             ?.mapNotNull { it.toIntOrNull() }
             ?.takeIf { it.isNotEmpty() }
         set(value) = prefs.edit().putString(KEY_EQ_LEVELS, value?.joinToString(",")).apply()
+
+    /** 0..1000 */
     var bassStrength: Int
         get() = prefs.getInt(KEY_BASS, 0)
         set(value) = prefs.edit().putInt(KEY_BASS, value).apply()
+
+    /** Loudness gain in millibels, 0..1000 */
     var loudnessMb: Int
         get() = prefs.getInt(KEY_LOUDNESS, 0)
         set(value) = prefs.edit().putInt(KEY_LOUDNESS, value).apply()
+
     private companion object {
         const val KEY_THEME = "theme"
         const val KEY_LIKED = "liked_ids"

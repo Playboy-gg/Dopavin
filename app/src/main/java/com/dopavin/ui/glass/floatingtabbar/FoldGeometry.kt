@@ -1,5 +1,7 @@
 package com.dopavin.ui.glass.floatingtabbar
+
 import kotlin.math.roundToInt
+
 internal data class FoldGeometry(
     val height: Int,
     val rowY: Int,
@@ -12,6 +14,7 @@ internal data class FoldGeometry(
     val playerY: Int,
     val playerWidth: Int,
 )
+
 internal fun foldGeometry(
     width: Int,
     restPillWidth: Int,
@@ -27,15 +30,19 @@ internal fun foldGeometry(
     fun mix(a: Float, b: Float, progress: Float) = a + (b - a) * progress
     val p = fold.coerceIn(0f, 1f)
     val s = search.coerceIn(0f, 1f)
+
     val rowHeight = mix(expandedRowHeight.toFloat(), collapsedRowHeight.toFloat(), p).roundToInt()
     val circle = rowHeight.coerceAtMost(width)
     val rowY = if (hasPlayer) ((playerHeight + spacing) * (1f - p)).roundToInt() else 0
+
     val restCluster = (restPillWidth + spacing + expandedRowHeight).coerceAtMost(width)
     val restPill = (restCluster - spacing - expandedRowHeight).coerceAtLeast(circle)
     val spanW = mix(restCluster.toFloat(), width.toFloat(), p)
     val spanX = mix((width - restCluster) / 2f, 0f, p)
+
     val searchWidth = mix(circle.toFloat(), (spanW - circle - spacing).coerceAtLeast(circle.toFloat()), s * (1f - p))
     val navWidth = mix(mix(restPill.toFloat(), circle.toFloat(), s), circle.toFloat(), p)
+
     return FoldGeometry(
         height = rowHeight + rowY,
         rowY = rowY,

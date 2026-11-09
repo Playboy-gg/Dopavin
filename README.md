@@ -7,7 +7,7 @@
     <img src="https://img.shields.io/badge/Kotlin-1.9.24-7F52FF?logo=kotlin&logoColor=white&style=flat-square" alt="Kotlin 1.9.24">
     <img src="https://img.shields.io/badge/Compose-1.7.5-4285F4?logo=jetpackcompose&logoColor=white&style=flat-square" alt="Jetpack Compose 1.7.5">
     <img src="https://img.shields.io/badge/License-GPL--3.0-FF3D81?style=flat-square" alt="GPL-3.0">
-    <img src="https://img.shields.io/badge/version-1.1-A7A5B3?style=flat-square" alt="Version 1.1">
+    <img src="https://img.shields.io/badge/version-1.2-A7A5B3?style=flat-square" alt="Version 1.2">
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs welcome">
   </p>
 
@@ -28,7 +28,7 @@ No account. No ads. No analytics. No subscription. Just your music, on your devi
 The name comes from **dopamine + veena**: the rush of a favourite song, and the instrument at the heart of it.
 
 > [!NOTE]
-> **Status:** v1.1 is the current version and the project is under active development. The core player is complete; some newer and optional integrations (ListenBrainz, Subsonic, YouTube Music sign-in, Android Auto) are still being verified and marked experimental. Screenshots will be added with the first public release.
+> **Status:** v1.2 is the current version and the project is under active development. The core player is complete; some newer and optional integrations (ListenBrainz, Subsonic, YouTube Music sign-in, Android Auto) are still being verified and marked experimental. Screenshots will be added with the first public release.
 
 ---
 
@@ -44,18 +44,20 @@ The name comes from **dopamine + veena**: the rush of a favourite song, and the 
 
 ### Playback
 
-- Background playback through a Media3 `MediaSessionService`, with notification, lock-screen, headset-button and Android Auto controls
-- Queue with drag-to-reorder, swipe-to-remove with undo, and "You / Auto" provenance chips
+- Background playback through a Media3 `MediaSessionService`, with a notification (previous, play/pause, next, repeat, close), lock-screen, headset-button and Android Auto controls
+- Queue with drag-to-reorder (the list scrolls by itself near its edges), swipe-to-remove with undo, and "You / Auto" provenance chips
 - Real shuffle order: the queue you see is the queue that plays
 - Equalizer with bass boost and virtualizer
 - Playback speed with pitch lock, skip silence, sleep timer with fade-out, fade between songs
-- Smart autoplay that appends related songs when the queue is about to end
+- Smart autoplay that keeps about ten related songs queued ahead; it does not mix your downloads into a streamed queue unless you are offline
 - Last queue and playback position restored on launch
 
 ### Discover
 
 - YouTube Music search with filter chips, "Did you mean", recent searches, artist / album / song results and "Show more results" paging
 - Home feed: continue listening, subscriptions, trending, radio, genres and moods
+- Your own country's charts and genre tiles that follow your phone's languages (Hindi, Punjabi, Tamil, Telugu, Malayalam, Kannada, Bengali, Spanish, Arabic, Korean ...) and what you play. Country and language are read from the phone; you are never asked for them
+- A short first-run welcome with a few artists to pick, so Home starts personal (everything can be skipped)
 - Artist pages with local Subscribe, shuffle and the artist's songs
 - Song radio, mood queues and a Personal Mix, driven by a deterministic, unit-tested scorer
 - Latest releases and new-release detection from official channels
@@ -70,17 +72,20 @@ The name comes from **dopamine + veena**: the rush of a favourite song, and the 
 ### Lyrics
 
 - Synced lyrics from seven sources with a race and fallback chain: lrc.red / BiniLyrics, Better Lyrics, Better Lyrics Portato, LyricsPlus, Unison, KuGou and LRCLIB
+- One priority: word-synced first, then line-synced, then plain text; later title variants are tried only to find a better kind, and failures are shown in plain words
 - Word-by-word (karaoke) highlighting when the source provides syllable timing
 - Tap a line to seek; current line on the player; generated lyrics card to share
 
 ### Personalisation and services
 
 - Light and dark themes, artwork-tinted Now Playing, cover art shared between the mini player and the full player
+- Gradient-free surfaces everywhere, including a flat neutral artwork placeholder while a cover loads
 - Liquid-glass tab bar, mini player, buttons, menus and sheets — with a solid fallback on older devices or when animations are off
 - Predictive back, Reduce Motion support and a Driving mode
 - Home-screen widget, Recap, share song / artist, Spotify link import
 - Optional: ListenBrainz scrobbling, your own Subsonic-compatible server, YouTube Music sign-in to import likes and playlists
-- In-app update check from GitHub Releases, with download and install after you confirm
+- In-app update check from GitHub Releases: an Update available dialog with the release notes, then download and install after you confirm
+- Settings > Contributors with the GitHub profile pictures of the people behind Dopavin
 
 ### Accessibility
 
@@ -186,7 +191,7 @@ docs/licenses/      third-party licence texts
 
 | Permission | Why it is needed |
 |---|---|
-| `INTERNET` | YouTube Music search, streams and downloads; artwork; lyrics; update check; optional services you enable |
+| `INTERNET` | YouTube Music search, streams and downloads; artwork; lyrics; update check; contributor pictures; optional services you enable |
 | `ACCESS_NETWORK_STATE` | Wi-Fi-only downloads and offline detection |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `FOREGROUND_SERVICE_DATA_SYNC` | Keep playback and downloads alive in the background |
 | `POST_NOTIFICATIONS` | Show the playback notification on Android 13+ |
@@ -197,12 +202,22 @@ docs/licenses/      third-party licence texts
 - `allowBackup="false"`. Android cloud backup is disabled.
 - Credentials for optional services live in a separate `accounts` preferences file, are excluded from backup exports, and are sent only to the service they belong to.
 - Lyrics requests send the track title, artist, album and duration to the chosen lyrics provider. Nothing else.
+- Your two-letter country code (read from the SIM, the network or the phone's region, never typed in) is sent to YouTube Music so the charts are your own country's.
+- Settings > Contributors downloads each contributor's public GitHub picture, only while that page is open.
 
 Read the full [`PRIVACY.md`](PRIVACY.md) for the data each optional service receives.
 
 ## Credits
 
 Dopavin is built on the work of many people. Thank you.
+
+### Contributors
+
+- [playboy-gg](https://github.com/playboy-gg): creator and maintainer
+- [Sandeepbedia](https://github.com/Sandeepbedia): UI/UX designer
+- Everyone else: [all contributors on GitHub](https://github.com/playboy-gg/Dopavin/graphs/contributors)
+
+The same list is in the app under Settings > Contributors.
 
 ### Runtime libraries
 

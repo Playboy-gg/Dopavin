@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -14,6 +15,12 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
+
+/**
+ * Page header for every pushed page: the back button is drawn separately (fixed, liquid glass), the
+ * title sits BELOW it and is part of the page content, so it scrolls away with the page. Optional
+ * [actions] stay on the title row. Put this as the first item of the page's scrolling content.
+ */
 @Composable
 fun ScreenHeader(
     onBack: () -> Unit,
@@ -24,6 +31,7 @@ fun ScreenHeader(
 ) {
     FloatingBackButton(onBack)
     Column(modifier.fillMaxWidth().statusBarsPadding()) {
+        // The room the fixed back button takes (its top gap + the button).
         Spacer(Modifier.height(Dimens.touchTarget + Dimens.sm))
         Row(
             Modifier.fillMaxWidth().padding(start = Dimens.screenEdge, end = Dimens.sm, top = Dimens.sm, bottom = Dimens.md),

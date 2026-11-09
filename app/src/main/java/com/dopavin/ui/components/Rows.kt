@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -46,6 +47,16 @@ import com.dopavin.data.ArtworkSize
 import com.dopavin.data.Song
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
+
+/**
+ * Song in any list. The row body plays the song; the overflow button (or a long-press anywhere on
+ * the row) opens the one shared song-action menu (F-98). The current song gets an accent title AND
+ * animated equalizer bars on its artwork (or in place of its track number) AND a spoken state, so
+ * it is never signalled by colour alone.
+ *
+ * [trackNumber] non-null = album layout (number instead of artwork). [selected] enables the
+ * multi-selection look (F-100): an accent ring and a check on the artwork.
+ */
 @Composable
 fun SongRow(
     song: Song,
@@ -73,6 +84,7 @@ fun SongRow(
     val nowPlaying = stringResource(R.string.state_now_playing)
     val description = stringResource(R.string.row_description, song.title, song.artist, duration)
     var menuOpen by remember { mutableStateOf(false) }
+
     Box(modifier.fillMaxWidth()) {
         Row(
             Modifier
@@ -193,6 +205,8 @@ fun SongRow(
         )
     }
 }
+
+/** Small scrim + centered content over artwork (current-song bars or the selection check). */
 @Composable
 private fun MenuScrimOverlay(
     shape: Shape = RectangleShape,
@@ -209,6 +223,8 @@ private fun MenuScrimOverlay(
         content()
     }
 }
+
+/** The three-dot target at the end of every song row (F-98). */
 @Composable
 fun SongActionsOverflow(
     songTitle: String,
@@ -223,6 +239,15 @@ fun SongActionsOverflow(
         tint = AppTheme.colors.textSecondary,
     )
 }
+
+/**
+ * F-98 / F-109: the ONE shared song-action sheet. Every song surface (rows, cards, queue entries)
+ * opens exactly this so behaviour never drifts; it is a bottom sheet, never a dropdown. [expanded]
+ * is a one-shot trigger: the sheet is shown on the shared host and [onDismiss] resets the caller's
+ * flag at once. [onPlayNow] replaces the queue with the caller's list starting at that song.
+ * Only enabled callbacks are shown; nothing fake is ever offered. Download entries come from
+ * [LocalActions] / [LocalDownloads].
+ */
 @Composable
 fun SongActionsMenu(
     expanded: Boolean,
@@ -258,6 +283,7 @@ fun SongActionsMenu(
                 ),
             )
         }
+        // Downloads (F-111): the offer depends on the song's download state.
         if (actions != null && song.videoId != null) {
             val videoId = song.videoId
             when {
@@ -293,6 +319,8 @@ fun SongActionsMenu(
         ),
     )
 }
+
+/** Section title with an optional "See all" action. */
 @Composable
 fun SectionHeader(
     title: String,
@@ -336,6 +364,8 @@ fun SectionHeader(
         }
     }
 }
+
+/** Vertical album card: square art, title, artist. Used in grids and carousels. */
 @Composable
 fun AlbumCard(
     album: Album,
@@ -354,6 +384,7 @@ fun AlbumCard(
         songCountText(album.songs.size),
     )
     val shape = RoundedCornerShape(Dimens.radiusMedium)
+
     Column(
         modifier
             .clickableScale(pressedScale = 0.97f, onClick = onClick)
@@ -382,6 +413,8 @@ fun AlbumCard(
         AppText(text = artist, style = type.bodySmall, color = colors.textSecondary)
     }
 }
+
+/** Compact "quick access" tile for Home: small art on the left, two-line title. */
 @Composable
 fun QuickTile(
     title: String,
@@ -425,6 +458,8 @@ fun QuickTile(
         )
     }
 }
+
+/** Artist as a circular avatar with the name underneath (carousels). */
 @Composable
 fun ArtistAvatarCard(
     artist: Artist,
@@ -459,6 +494,7 @@ fun ArtistAvatarCard(
         )
     }
 }
+
 @Composable
 fun ArtistRow(
     artist: Artist,
@@ -469,6 +505,7 @@ fun ArtistRow(
     val type = AppTheme.type
     val count = songCountText(artist.songs.size)
     val description = stringResource(R.string.artist_subtitle, artist.name, count)
+
     Row(
         modifier
             .fillMaxWidth()

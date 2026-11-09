@@ -1,4 +1,5 @@
 package com.dopavin.ui.screens
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -75,8 +77,23 @@ import com.dopavin.ui.glass.glassSurface
 import com.dopavin.ui.glass.backdrop.backdrops.layerBackdrop
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
+
+/** One-off decorative size: rows are a fixed height so the reorder displacement is exact. */
 private val QUEUE_ROW_HEIGHT = 72.dp
+
+/** Lift while a row is held (F-212: bigger, and on a liquid-glass rounded box when glass is on). */
 private const val QUEUE_ROW_LIFT = 1.05f
+
+/**
+ * S-07 (F-102 upgrade). The queue as a top layer over Now Playing:
+ * - tap a row to jump; the playing row keeps its accent title and equalizer bars;
+ * - long-press + drag to reorder (a keyboard/reader-friendly Move up/down also lives in the row menu);
+ * - swipe a row sideways to remove it, with an Undo snackbar afterwards;
+ * - the three-dot menu carries the shared song actions plus queue-only moves and remove;
+ * - header actions: save the queue as a playlist and clear everything after the current song.
+ * Provenance chips ("Auto" on generated rows — manual rows stay unlabelled, D-32) come from
+ * this session's queue-origins map.
+ */
 @Composable
 fun QueueSheet(
     playback: PlaybackUi,
@@ -89,6 +106,8 @@ fun QueueSheet(
         QueuePanel(playback, songsById, liked, origins, actions, Modifier.weight(1f))
     }
 }
+
+/** The queue list itself; Now Playing shows it in place of the artwork, [QueueSheet] in a sheet. */
 @Composable
 fun QueuePanel(
     playback: PlaybackUi,
@@ -103,14 +122,19 @@ fun QueuePanel(
     val rowHeightPx = with(LocalDensity.current) { QUEUE_ROW_HEIGHT.toPx() }
     var dragFrom by remember { mutableStateOf<Int?>(null) }
     var dragOffsetPx by remember { mutableFloatStateOf(0f) }
+    // F-213: after the finger lifts the held row glides into its slot first; only then is the queue changed.
+    // [pendingIds] is the queue order before that change: while it is still the current order the rows keep
+    // their offsets, and the moment the new order arrives every offset drops to 0 in the SAME frame (no flash).
     var pendingIds by remember { mutableStateOf<List<String>?>(null) }
     var settling by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     var confirmClear by remember { mutableStateOf(false) }
     var savingPlaylist by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         if (playback.currentIndex > 0) listState.scrollToItem(playback.currentIndex)
     }
+
     val queueIds = remember(queue) { queue.map { it.mediaId } }
     val reorderApplied = pendingIds != null && queueIds != pendingIds
     LaunchedEffect(reorderApplied) {
@@ -129,6 +153,58 @@ fun QueuePanel(
             (from + (dragOffsetPx / rowHeightPx).roundToInt()).coerceIn(0, queue.lastIndex)
         }
     }
+    // Fix: drag bounds and auto-scroll. Rows are a fixed height, so the scroll position in px is exact.
+    val scrollPx: () -> Float = {
+        listState.firstVisibleItemIndex * rowHeightPx + listState.firstVisibleItemScrollOffset
+    }
+    val viewportPx: () -> Float = {
+        (listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset).toFloat()
+    }
+    /** Keeps the held row inside the queue (first..last slot) and inside the visible list area. */
+    val clampOffset: (Float) -> Float = { raw ->
+        val from = dragFrom
+        if (from == null || queue.isEmpty()) {
+            raw
+        } else {
+            val slotTop = from * rowHeightPx - scrollPx()
+            val lo = maxOf(-from * rowHeightPx, -slotTop)
+            var hi = minOf((queue.lastIndex - from) * rowHeightPx, viewportPx() - rowHeightPx - slotTop)
+            if (hi < lo) hi = lo
+            raw.coerceIn(lo, hi)
+        }
+    }
+    val dragging = activeFrom != null && !settling
+    // The effect below lives for the whole drag, so it must read the LATEST values, not the first composition's.
+    val latestClamp by androidx.compose.runtime.rememberUpdatedState(clampOffset)
+    val latestQueueSize by androidx.compose.runtime.rememberUpdatedState(queue.size)
+    LaunchedEffect(dragging) {
+        if (!dragging) return@LaunchedEffect
+        val edge = rowHeightPx * 0.9f
+        val maxSpeed = rowHeightPx * 9f // px per second at the very edge
+        var last = 0L
+        while (true) {
+            val now = androidx.compose.runtime.withFrameNanos { it }
+            val dt = if (last == 0L) 0f else ((now - last) / 1_000_000_000f).coerceAtMost(0.05f)
+            last = now
+            val from = dragFrom ?: break
+            if (latestQueueSize == 0) continue
+            val viewport = viewportPx()
+            val top = from * rowHeightPx - scrollPx() + dragOffsetPx
+            val bottom = top + rowHeightPx
+            val speed = when {
+                top < edge -> -maxSpeed * ((edge - top) / edge).coerceIn(0f, 1f)
+                bottom > viewport - edge -> maxSpeed * ((bottom - (viewport - edge)) / edge).coerceIn(0f, 1f)
+                else -> 0f
+            }
+            if (speed != 0f && dt > 0f) {
+                // The list moves under a stationary finger, so the row's offset from its own slot grows by
+                // exactly what was scrolled: the pill stays under the finger and the target slot follows.
+                val consumed = listState.scrollBy(speed * dt)
+                if (consumed != 0f) dragOffsetPx = latestClamp(dragOffsetPx + consumed)
+            }
+        }
+    }
+
     val displacement: (Int) -> Float = { index ->
         val from = activeFrom
         val to = dragTarget
@@ -142,11 +218,15 @@ fun QueuePanel(
             0f
         }
     }
+
+    // Songs that can be saved (snapshots the queue resolves back to real Songs).
     val queueSongs = queue.mapNotNull { it.mediaId.toLongOrNull()?.let { id -> songsById[id] } }
+
     val listBackdrop = com.dopavin.ui.glass.backdrop.backdrops.rememberLayerBackdrop()
     val glassBase = com.dopavin.ui.glass.LocalGlassBackdrop.current
     val overlayBackdrop = com.dopavin.ui.glass.backdrop.backdrops.rememberCombinedBackdrop(glassBase ?: listBackdrop, listBackdrop)
     val showOverlay = activeFrom != null && com.dopavin.ui.glass.LocalGlassStyle.current.enabled && glassBase != null
+
     Column(modifier) {
         Row(
             Modifier
@@ -179,11 +259,14 @@ fun QueuePanel(
                 tint = AppTheme.colors.textSecondary,
             )
         }
+        // F-214: the list is recorded as a backdrop; the held row is drawn ABOVE it (outside the recording), so its
+        // glass bends the other songs as they pass behind it, and never samples a layer that contains itself.
         Box(Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
+                    // Only recorded while a row is held; otherwise the old recording is reused (no extra layer work when scrolling).
                     .layerBackdrop(listBackdrop, frozen = { !showOverlay }),
             ) {
                 itemsIndexed(queue, key = { index, item -> "${item.mediaId}#$index" }) { index, item ->
@@ -204,11 +287,12 @@ fun QueuePanel(
                         reordering = activeFrom != null,
                         displacedY = displacement(index),
                         onLift = { if (!settling) { dragFrom = index; dragOffsetPx = 0f } },
-                        onDrag = { deltaY -> if (!settling) dragOffsetPx += deltaY },
+                        onDrag = { deltaY -> if (!settling) dragOffsetPx = clampOffset(dragOffsetPx + deltaY) },
                         onDropped = {
                             val from = dragFrom
                             val to = dragTarget
                             if (from == null || to == null || settling) {
+                                // nothing held (or already settling)
                             } else {
                                 settling = true
                                 scope.launch {
@@ -228,6 +312,7 @@ fun QueuePanel(
                                     } else {
                                         pendingIds = queueIds
                                         actions.moveInQueue(from, to)
+                                        // Safety net: if the queue never changes, do not leave the rows displaced.
                                         kotlinx.coroutines.delay(800)
                                         if (pendingIds != null) {
                                             dragFrom = null
@@ -258,9 +343,9 @@ fun QueuePanel(
                         .fillMaxWidth()
                         .height(QUEUE_ROW_HEIGHT)
                         .offset {
-                            val top = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == heldIndex }?.offset
-                                ?: (heldIndex * rowHeightPx).roundToInt()
-                            androidx.compose.ui.unit.IntOffset(0, top + dragOffsetPx.roundToInt())
+                            // From the scroll position, so it stays right while auto-scroll moves the held row's own slot.
+                            val top = heldIndex * rowHeightPx - scrollPx()
+                            androidx.compose.ui.unit.IntOffset(0, (top + dragOffsetPx).roundToInt())
                         }
                         .zIndex(2f),
                 ) {
@@ -287,6 +372,7 @@ fun QueuePanel(
             }
         }
     }
+
     if (confirmClear) {
         com.dopavin.ui.components.GlassDialog(
             title = stringResource(R.string.queue_clear),
@@ -310,6 +396,8 @@ fun QueuePanel(
         )
     }
 }
+
+/** Queue menu "Play next" needs a Song; unknown rows fall back on snapshot metadata. */
 private fun songOrDefault(item: QueueItem, song: Song?): Song =
     song ?: Song(
         id = item.mediaId.toLongOrNull() ?: 0L,
@@ -317,10 +405,12 @@ private fun songOrDefault(item: QueueItem, song: Song?): Song =
         artist = item.artist,
         album = "",
         albumKey = UNKNOWN_ALBUM_KEY,
-        durationMs = 0L,
+        durationMs = item.durationMs,
         dateAdded = 0L,
         track = 0,
+        thumbUri = item.artworkUri,
     )
+
 @Composable
 private fun QueueRow(
     item: QueueItem,
@@ -332,8 +422,11 @@ private fun QueueRow(
     originManual: Boolean,
     favorite: Boolean,
     lifted: Boolean,
+    /** The held row is drawn by the overlay above the list: this copy only keeps the gesture. */
     hidden: Boolean,
+    /** Draw the liquid-glass box (only the overlay copy does, outside the recorded list). */
     glassHeld: Boolean,
+    /** Some row is being held: the others glide to their displaced place instead of jumping. */
     reordering: Boolean,
     displacedY: Float,
     onLift: () -> Unit,
@@ -351,14 +444,22 @@ private fun QueueRow(
     val type = AppTheme.type
     val description = stringResource(R.string.queue_row_description, item.title, item.artist, position, total)
     var menuOpen by remember { mutableStateOf(false) }
+
     val swipeOffset = remember { Animatable(0f) }
     val rowScope = rememberCoroutineScope()
     val swipeThreshold = with(LocalDensity.current) { 112.dp.toPx() }
     val swipeText = stringResource(R.string.cd_remove_from_queue, item.title)
+
+    // pointerInput(Unit) captures its block once, so the gesture callbacks must always read the
+    // LATEST lambda parameters (the drag target/index move as the queue changes underneath).
     val currentOnLift by rememberUpdatedState(onLift)
     val currentOnDrag by rememberUpdatedState(onDrag)
     val currentOnDropped by rememberUpdatedState(onDropped)
     val currentOnRemove by rememberUpdatedState(onRemove)
+
+    // F-212: the held row sits on a liquid-glass rounded box (Capsule shape). Only with glass on: with glass
+    // off (or Reduce Motion) the row just enlarges, as before.
+    // The rows the held one passes slide with a spring instead of jumping (the held row follows the finger 1:1).
     val shift = remember { Animatable(0f) }
     LaunchedEffect(displacedY, reordering, lifted) {
         if (lifted) return@LaunchedEffect
@@ -366,6 +467,7 @@ private fun QueueRow(
             shift.animateTo(
                 displacedY,
                 androidx.compose.animation.core.spring(
+                    // Soft and settled: no overshoot, slower than the default so the shift is easy to follow.
                     dampingRatio = 0.9f,
                     stiffness = 380f,
                 ),
@@ -375,8 +477,16 @@ private fun QueueRow(
         }
     }
     val heldGlass = lifted && glassHeld
+    // While held, keep this row composed even if auto-scroll moves its slot out of view; otherwise the
+    // lazy list would dispose it and the drag gesture would be cancelled half way.
+    val pinContainer = androidx.compose.ui.layout.LocalPinnableContainer.current
+    androidx.compose.runtime.DisposableEffect(lifted, pinContainer) {
+        val handle = if (lifted) pinContainer?.pin() else null
+        onDispose { handle?.release() }
+    }
     val heldShape = remember { com.kyant.capsule.ContinuousRoundedRectangle(Dimens.radiusXLarge) }
     Box(Modifier.fillMaxWidth().zIndex(if (lifted) 1f else 0f)) {
+        // Swipe background (revealed from the side the finger pushes towards).
         if (swipeOffset.value != 0f) {
             Row(
                 Modifier
@@ -409,7 +519,14 @@ private fun QueueRow(
                     translationX = swipeOffset.value
                     alpha = if (hidden) 0f else 1f
                     if (lifted) {
-                        shadowElevation = 24f
+                        // Fix: this platform shadow defaulted to a RECTANGLE (graphicsLayer's default shape), which
+                        // showed as a square edge around the rounded pill. The glass copy draws its own rounded
+                        // shadow, the hidden list copy draws nothing, and the no-glass look gets a rounded one.
+                        if (!heldGlass && !hidden) {
+                            shadowElevation = 24f
+                            shape = heldShape
+                            clip = false
+                        }
                         scaleX = QUEUE_ROW_LIFT
                         scaleY = QUEUE_ROW_LIFT
                     }
@@ -425,6 +542,8 @@ private fun QueueRow(
                 )
                 .semantics(mergeDescendants = true) { contentDescription = description }
                 .pointerInput(Unit) {
+                    // Long-press + drag reorders. Consumes everything once active, so the
+                    // horizontal swipe detector below stays out of the way afterwards.
                     detectDragGesturesAfterLongPress(
                         onDragStart = {
                             if (abs(swipeOffset.value) < 1f) currentOnLift()
@@ -438,6 +557,7 @@ private fun QueueRow(
                     )
                 }
                 .pointerInput(Unit) {
+                    // Horizontal swipe removes the row; the snackbar Undo follows in MusicApp.
                     detectHorizontalDragGestures(
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
@@ -474,7 +594,7 @@ private fun QueueRow(
                         .size(Dimens.artworkRow),
                 ) {
                     ArtworkImage(
-                        uri = song?.artworkUri,
+                        uri = song?.artworkUri ?: item.artworkUri,
                         sizePx = ArtworkSize.Row,
                         shape = RoundedCornerShape(Dimens.radiusSmall),
                         modifier = Modifier.fillMaxSize(),
@@ -514,9 +634,10 @@ private fun QueueRow(
                     }
                 }
                 Spacer(Modifier.width(Dimens.sm))
-                if (song != null) {
+                val rowDurationMs = song?.durationMs?.takeIf { it > 0L } ?: item.durationMs
+                if (rowDurationMs > 0L) {
                     AppText(
-                        text = formatTime(song.durationMs),
+                        text = formatTime(rowDurationMs),
                         style = type.numeric,
                         color = colors.textSecondary,
                         overflow = TextOverflow.Clip,
@@ -525,6 +646,7 @@ private fun QueueRow(
                 Spacer(Modifier.width(Dimens.sm))
             }
         }
+        // The queue-only menu button sits in the Box so its alignment matches the row's height.
         SongActionsOverflow(
             songTitle = item.title,
             onOpen = { menuOpen = true },
@@ -540,7 +662,7 @@ private fun QueueRow(
             onMoveUp = onMoveUp,
             onMoveDown = onMoveDown,
             onPlayNext = onPlayNext,
-            onAddToQueue = null,
+            onAddToQueue = null, // already in the queue here: offering it would lie
             favorite = if (song != null) favorite else null,
             onToggleFavorite = onToggleFavorite,
             onOpenDetails = onOpenDetails,
@@ -548,6 +670,8 @@ private fun QueueRow(
         )
     }
 }
+
+/** Tiny tonal pill in the artist line, shown only on generated rows: "Auto" (D-32). */
 @Composable
 private fun OriginChip(label: String) {
     Box(

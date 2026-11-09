@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -19,24 +20,42 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
-fun Modifier.meltIntoPage(): Modifier = this
+
+/** Where large cover art starts melting into the page: the bottom 28% fades out. */
+const val COVER_FADE_START = 0.72f
+
+/** Fades the lower part of what it draws to transparent, so it melts into the page behind it. */
+fun Modifier.meltIntoPage(solidUntil: Float = 0.42f): Modifier = meltIntoPage { solidUntil }
+
+/**
+ * Same as above, but [solidUntil] is read on every draw. The flying cover uses this to lose the
+ * fade as it shrinks into the mini player, where the cover is solid.
+ */
+fun Modifier.meltIntoPage(solidUntil: () -> Float): Modifier = this
     .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
     .drawWithContent {
         drawContent()
+        val start = solidUntil().coerceIn(0f, 0.999f)
+        val span = 1f - start
         drawRect(
             brush = Brush.verticalGradient(
                 0.00f to Color.Black,
-                0.42f to Color.Black,
-                0.55f to Color.Black.copy(alpha = 0.88f),
-                0.67f to Color.Black.copy(alpha = 0.64f),
-                0.78f to Color.Black.copy(alpha = 0.38f),
-                0.88f to Color.Black.copy(alpha = 0.16f),
-                0.95f to Color.Black.copy(alpha = 0.04f),
+                start to Color.Black,
+                start + span * 0.224f to Color.Black.copy(alpha = 0.88f),
+                start + span * 0.431f to Color.Black.copy(alpha = 0.64f),
+                start + span * 0.621f to Color.Black.copy(alpha = 0.38f),
+                start + span * 0.793f to Color.Black.copy(alpha = 0.16f),
+                start + span * 0.914f to Color.Black.copy(alpha = 0.04f),
                 1.00f to Color.Transparent,
             ),
             blendMode = BlendMode.DstIn,
         )
     }
+
+/**
+ * Cover page header shared by list screens that look like the artist page: a square cover that
+ * melts into the page, the title (and optional subtitle) and the action buttons on it.
+ */
 @Composable
 fun CoverHero(
     title: String,

@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,6 +26,12 @@ import com.dopavin.data.currentLineIndex
 import com.dopavin.playback.PlaybackUi
 import com.dopavin.ui.MusicActions
 import com.dopavin.ui.theme.AppTheme
+
+/**
+ * F-203: the line being sung, one row under the artist in the full player, highlighted word by word like karaoke; a tap opens the lyrics. It asks for the lyrics itself (only
+ * when the setting is on and they are not loaded for this song yet) and shows nothing for songs without
+ * synced lyrics. Position is polled at 4 Hz, which is plenty for a line that changes every few seconds.
+ */
 @Composable
 fun LyricStrip(
     song: Song?,
@@ -42,6 +49,8 @@ fun LyricStrip(
     }
     val ready = lyrics.songId == song.id && lyrics.status == LyricsStatus.Found && lyrics.synced.isNotEmpty()
     if (!ready) return
+    // 20 updates a second: smooth enough for one small line, and 3x cheaper than every frame (this strip sits
+    // on the player, which also draws the artwork, glass buttons and the seek bar).
     val position = rememberPlaybackPosition(playback.mediaId, playback.isPlaying, actions::position, intervalMs = 50L)
     val lines = lyrics.synced
     val index by remember(lines, lyrics.offsetMs) {
@@ -54,8 +63,10 @@ fun LyricStrip(
         modifier
             .fillMaxWidth()
             .heightIn(min = 24.dp)
+            // Tapping the strip opens the full lyrics.
             .clickable(interactionSource = noRipple, indication = null, onClick = onClick),
     ) {
+        // Crossfade only on the line number, so a line change fades but the highlight itself never restarts.
         Crossfade(targetState = index, label = "lyricStrip") { i ->
             val line = lines.getOrNull(i)
             if (line == null || line.text.isBlank() || line.text.trim() == "♪") {
@@ -71,6 +82,7 @@ fun LyricStrip(
                         reduce,
                     )
                 } else {
+                    // Outgoing line while it fades: fully sung.
                     AnnotatedString(line.text.trim())
                 }
                 Text(
@@ -84,4 +96,6 @@ fun LyricStrip(
         }
     }
 }
+
+/** Highlight slightly before the word is sung, same lead as the lyrics page. */
 private const val STRIP_LEAD_MS = 300L

@@ -75,6 +75,10 @@ Strings live in `app/src/main/res/values/strings*.xml`. Do not translate strings
 
 Dopavin is licensed under **GPL-3.0**. By contributing, you agree that your contribution is licensed under the same terms. Only submit code you wrote yourself or code whose licence is compatible with GPL-3.0, and keep the original copyright notices. Do not paste code from a project with an incompatible licence.
 
+## Being listed as a contributor
+
+Contributors are shown in the app (Settings > Contributors) and in the README. To be added, a maintainer adds one line to `Contributors.people` in `app/src/main/java/com/dopavin/data/Contributors.kt` (name, exact GitHub login, role) and one line to the README. The in-app page also links to GitHub's own contributors list, which always includes everyone.
+
 ## Reporting bugs and security issues
 
 - Bugs: use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.yml). Include the app version, device, Android version and exact steps.

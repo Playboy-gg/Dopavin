@@ -1,4 +1,5 @@
 package com.dopavin.ui.theme
+
 import android.provider.Settings
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.LocalContentColor
@@ -13,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+
+/** Entry point for reading tokens: AppTheme.colors, AppTheme.type, AppTheme.motion. */
 object AppTheme {
     val colors: AppColors
         @Composable @ReadOnlyComposable get() = LocalAppColors.current
@@ -21,14 +24,17 @@ object AppTheme {
     val motion: MotionSpec
         @Composable @ReadOnlyComposable get() = LocalMotion.current
 }
+
 @Composable
 fun MusicTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     pureBlack: Boolean = false,
+    /** Accent tint setting (see AccentTint) and, for the dynamic one, the artwork colour of the playing song. */
     accentTint: Int = 0,
     artworkTint: Color? = null,
     content: @Composable () -> Unit,
 ) {
+    // F-113: "Pure black" swaps the dark canvas and the lowest surface for true black (OLED).
     val baseColors = when {
         !darkTheme -> LightColors
         pureBlack -> DarkColors.copy(canvas = Color.Black, surface = Color(0xFF050507))
@@ -42,8 +48,10 @@ fun MusicTheme(
             1f,
         ) == 0f
     }
+    // Accent tint: one colour drives every button, icon highlight, slider and gradient. It fades between songs.
     val derived = com.dopavin.data.AccentTint.baseFor(accentTint, artworkTint?.toArgb())
         ?.let { com.dopavin.data.AccentTint.derive(it, darkTheme) }
+    // Reduce motion: the accent changes at once instead of fading between songs.
     val fade = androidx.compose.animation.core.tween<Color>(if (reduceMotion) 0 else 450)
     val accent by androidx.compose.animation.animateColorAsState(derived?.let { Color(it.accent) } ?: baseColors.accent, fade, label = "tintAccent")
     val accentStart by androidx.compose.animation.animateColorAsState(derived?.let { Color(it.start) } ?: baseColors.accentStart, fade, label = "tintStart")
@@ -51,6 +59,8 @@ fun MusicTheme(
     val onAccent by androidx.compose.animation.animateColorAsState(derived?.let { Color(it.onAccent) } ?: baseColors.onAccent, fade, label = "tintOn")
     val focusRing by androidx.compose.animation.animateColorAsState(derived?.let { Color(it.focusRing) } ?: baseColors.focusRing, fade, label = "tintFocus")
     val colors = baseColors.copy(accent = accent, accentStart = accentStart, accentEnd = accentEnd, onAccent = onAccent, focusRing = focusRing)
+
+    // Material3 components (slider, menu, snackbar, progress) read these; they are mapped from our tokens.
     val scheme = if (darkTheme) {
         darkColorScheme(
             primary = colors.accent,
@@ -86,6 +96,7 @@ fun MusicTheme(
             inversePrimary = colors.accent,
         )
     }
+
     CompositionLocalProvider(
         LocalAppColors provides colors,
         LocalAppType provides AppType(),

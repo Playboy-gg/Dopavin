@@ -1,4 +1,5 @@
 package com.kyant.capsule.continuities
+
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
@@ -10,8 +11,10 @@ import com.kyant.capsule.core.Point
 import com.kyant.capsule.path.PathSegments
 import com.kyant.capsule.path.buildPathSegments
 import kotlin.math.PI
+
 @Immutable
 data object G1Continuity : Continuity {
+
     override fun createRoundedRectanglePathSegments(
         width: Double,
         height: Double,
@@ -60,6 +63,7 @@ data object G1Continuity : Continuity {
             close()
         }
     }
+
     override fun createRoundedRectangleOutline(
         size: Size,
         topLeft: Float,
@@ -77,6 +81,7 @@ data object G1Continuity : Continuity {
             )
         )
     }
+
     override fun lerp(stop: Continuity, fraction: Double): Continuity {
         return when (stop) {
             is G1Continuity -> this
@@ -85,6 +90,7 @@ data object G1Continuity : Continuity {
                     profile = lerp(G2ContinuityProfile.G1Equivalent, stop.profile, fraction),
                     capsuleProfile = lerp(G2ContinuityProfile.G1Equivalent, stop.capsuleProfile, fraction)
                 )
+
             else -> stop.lerp(this, 1f - fraction)
         }
     }

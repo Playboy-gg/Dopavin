@@ -37,6 +37,25 @@ private fun doc(source: String, conf: Float = 0.9f, kind: LyricsKind = LyricsKin
 private fun q(title: String, artist: String = "A", strict: Boolean = false) =
     LyricsQuery(title, artist, "", 200, null, strict = strict)
 
+private class CapFbFake(
+    override val id: String,
+    override val capabilities: Set<LyricsKind>,
+    private val answer: (LyricsQuery) -> ProviderOutcome,
+) : LyricsProvider {
+    val calls = ArrayList<LyricsQuery>()
+    override suspend fun fetch(query: LyricsQuery): ProviderOutcome {
+        synchronized(calls) { calls += query }
+        return answer(query)
+    }
+}
+
+private fun wordDoc(source: String) = LyricsDoc(
+    source,
+    listOf(LyricLine(1000, "w", listOf(LyricWord(1000, 1500, "w")))),
+    null,
+    0.9f,
+)
+
 class LyricsFallbackTest {
     private val plan = listOf(q("Exact Title (Official Video)"), q("Exact Title"), q("Exact Title", "", strict = true))
 
@@ -166,5 +185,39 @@ class LyricsFallbackTest {
         assertEquals(3, runs.get())
         assertFalse(all.isEmpty())
         scope.coroutineContext[kotlinx.coroutines.Job]!!.cancel()
+    }
+
+    @Test fun laterQueryUpgradesLineSyncedToWordSynced() = runBlocking {
+        val line = CapFbFake(LyricsProviders.LRCLIB, setOf(LyricsKind.LineSynced, LyricsKind.Plain)) {
+            ProviderOutcome.Success(doc(LyricsProviders.LRCLIB))
+        }
+        // Better Lyrics has nothing for the raw title but has word timing for the cleaned one.
+        val word = CapFbFake(LyricsProviders.BETTER, setOf(LyricsKind.WordSynced, LyricsKind.LineSynced)) { query ->
+            if (query.title == "Exact Title") ProviderOutcome.Success(wordDoc(LyricsProviders.BETTER)) else ProviderOutcome.NotFound
+        }
+        val r = LyricsFallback().run(plan, listOf(line, word)) as RaceResult.Won
+        assertEquals(LyricsProviders.BETTER, r.doc.source)
+        assertEquals(LyricsKind.WordSynced, r.doc.kind)
+        // The provider that cannot beat line-synced is not asked again.
+        assertEquals(1, line.calls.size)
+    }
+
+    @Test fun lineSyncedIsKeptWhenNoLaterQueryFindsWordTiming() = runBlocking {
+        val line = CapFbFake(LyricsProviders.LRCLIB, setOf(LyricsKind.LineSynced)) { ProviderOutcome.Success(doc(LyricsProviders.LRCLIB)) }
+        val word = CapFbFake(LyricsProviders.BETTER, setOf(LyricsKind.WordSynced)) { ProviderOutcome.NotFound }
+        val r = LyricsFallback().run(plan, listOf(line, word)) as RaceResult.Won
+        assertEquals(LyricsProviders.LRCLIB, r.doc.source)
+        assertTrue(word.calls.size <= 1 + LyricsFallback.UPGRADE_QUERIES)
+    }
+
+    @Test fun plainIsUpgradedToLineSyncedByALaterQuery() = runBlocking {
+        val plainOnly = CapFbFake(LyricsProviders.UNISON, setOf(LyricsKind.Plain)) {
+            ProviderOutcome.Success(doc(LyricsProviders.UNISON, 0.9f, LyricsKind.Plain))
+        }
+        val synced = CapFbFake(LyricsProviders.KUGOU, setOf(LyricsKind.LineSynced)) { query ->
+            if (query.title == "Exact Title") ProviderOutcome.Success(doc(LyricsProviders.KUGOU)) else ProviderOutcome.NotFound
+        }
+        val r = LyricsFallback().run(plan, listOf(plainOnly, synced)) as RaceResult.Won
+        assertEquals(LyricsProviders.KUGOU, r.doc.source)
     }
 }

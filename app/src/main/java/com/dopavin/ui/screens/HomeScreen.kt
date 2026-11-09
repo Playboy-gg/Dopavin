@@ -1,7 +1,9 @@
 package com.dopavin.ui.screens
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.widthIn
@@ -27,6 +29,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -52,6 +55,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dopavin.R
 import com.dopavin.data.ArtworkSize
+import com.dopavin.data.CategoryKind
+import com.dopavin.data.HomeCategorySpec
 import com.dopavin.data.Song
 import com.dopavin.data.Visible
 import com.dopavin.playback.PlaybackUi
@@ -65,6 +70,8 @@ import com.dopavin.ui.components.LocalBottomInset
 import com.dopavin.ui.glass.glassSurface
 import com.dopavin.ui.components.AppText
 import com.dopavin.ui.components.ArtworkImage
+import com.dopavin.ui.components.CategoryArt
+import com.dopavin.ui.components.CategoryArtKind
 import com.dopavin.ui.components.EmptyState
 import com.dopavin.ui.components.EqualizerBars
 import com.dopavin.ui.components.GradientButton
@@ -74,13 +81,16 @@ import com.dopavin.ui.RADIO_QUERY_PREFIX
 import com.dopavin.ui.components.SectionHeader
 import com.dopavin.ui.components.SongActionsMenu
 import com.dopavin.ui.components.clickableScale
-import com.dopavin.ui.components.placeholderBrush
 import com.dopavin.ui.components.focusRing
 import com.dopavin.ui.components.greetingText
 import com.dopavin.ui.components.rememberArtworkTint
 import com.dopavin.ui.components.songCountText
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
+
+/** S-02, F-97. Home is the online scene: greeting + hero, mood chips (they work offline),
+ * category tiles, the top played artists as YouTube shelves, "Because you played X", and a
+ * history shelf (the play log, newest first) that stays under the YouTube toggle. */
 @Composable
 fun HomeScreen(
     view: ViewState,
@@ -102,20 +112,50 @@ fun HomeScreen(
         HomeContent(visible, playback, currentSong, home, liked, actions)
     }
 }
+
 private const val RECENT_SHELF_SIZE = 12
-private data class HomepageCategory(val label: Int, val query: String)
-private val HOMEPAGE_CATEGORIES = listOf(
-    HomepageCategory(R.string.cat_charts, "top songs this week"),
-    HomepageCategory(R.string.cat_punjabi, "new punjabi songs"),
-    HomepageCategory(R.string.cat_bollywood, "latest bollywood songs"),
-    HomepageCategory(R.string.cat_romantic, "romantic hindi songs"),
-    HomepageCategory(R.string.cat_lofi, "lofi chill songs"),
-    HomepageCategory(R.string.cat_english, "top english hits"),
-)
+
+/** The six seed categories (F-87): a label for the UI, a YouTube Music query for the back end. */
+/** The art that goes with a tile; every language without its own scene shares the [CategoryArtKind.Regional] one. */
+private fun categoryArt(kind: CategoryKind): CategoryArtKind = when (kind) {
+    CategoryKind.Charts -> CategoryArtKind.Charts
+    CategoryKind.Punjabi -> CategoryArtKind.Punjabi
+    CategoryKind.Bollywood -> CategoryArtKind.Bollywood
+    CategoryKind.Romantic -> CategoryArtKind.Romantic
+    CategoryKind.Lofi -> CategoryArtKind.Lofi
+    CategoryKind.English -> CategoryArtKind.English
+    CategoryKind.Regional -> CategoryArtKind.Regional
+}
+
+/** A tile's name; a regional one is named in the phone's own language ("Tamil hits"). */
+@Composable
+private fun categoryLabel(spec: HomeCategorySpec): String = when (spec.kind) {
+    CategoryKind.Charts -> stringResource(R.string.cat_charts)
+    CategoryKind.Punjabi -> stringResource(R.string.cat_punjabi)
+    CategoryKind.Bollywood -> stringResource(R.string.cat_bollywood)
+    CategoryKind.Romantic -> stringResource(R.string.cat_romantic)
+    CategoryKind.Lofi -> stringResource(R.string.cat_lofi)
+    CategoryKind.English -> stringResource(R.string.cat_english)
+    CategoryKind.Regional -> stringResource(R.string.cat_regional, languageName(spec.languageCode))
+}
+
+private fun languageName(code: String?): String {
+    val tag = code.orEmpty()
+    val name = java.util.Locale.forLanguageTag(tag).getDisplayLanguage(java.util.Locale.getDefault())
+    return name.replaceFirstChar { it.uppercase() }.ifBlank { tag }
+}
+
 private const val QUICK_PICKS = 8
-private const val TRENDING_RANKED = 5
+private const val TRENDING_COLUMNS = 3
+private const val TRENDING_PER_COLUMN = 5
+private const val TRENDING_SHOWN = TRENDING_COLUMNS * TRENDING_PER_COLUMN
 private const val SUBS_SHELF_SIZE = 12
 private val BIG_CARD_WIDTH = 280.dp
+
+/** Height of one ranked trending row; five of them make a column. */
+private val TRENDING_ROW_HEIGHT = 68.dp
+
+/** Recent plays first, topped up with the newest downloads; never the same song twice. */
 private fun quickPicks(history: List<Song>, downloaded: List<Song>): List<Song> {
     val out = ArrayList<Song>(QUICK_PICKS)
     for (song in history + downloaded.sortedByDescending { it.dateAdded }) {
@@ -124,6 +164,7 @@ private fun quickPicks(history: List<Song>, downloaded: List<Song>): List<Song> 
     }
     return out
 }
+
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeContent(
@@ -137,10 +178,16 @@ private fun HomeContent(
     val colors = AppTheme.colors
     val context = LocalContext.current
     val quick = remember(home.history, visible.songs) { quickPicks(home.history, visible.songs) }
+    // Lag fix: this sort used to run inside the LazyColumn content lambda, i.e. on the main thread each
+    // time Home recomposed (every play / pause / song change). It only depends on the library.
+    val recentDownloads = remember(visible.songs) {
+        visible.songs.sortedByDescending { it.dateAdded }.take(RECENT_SHELF_SIZE)
+    }
     val currentId = playback.mediaId
     val radioSeeds = remember(home.topArtists, home.history, home.trending) {
         radioSeeds(home.topArtists, home.history, home.trending)
     }
+
     var refreshing by remember { mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(refreshing) {
         if (refreshing) {
@@ -171,6 +218,8 @@ private fun HomeContent(
                     onSettings = actions::openSettings,
                 )
             }
+
+            // 1. The one big thing: continue what is playing (or shuffle the library).
             item(key = "hero") {
                 HeroCard(
                     playback = playback,
@@ -190,6 +239,8 @@ private fun HomeContent(
                         .widthIn(max = 560.dp),
                 )
             }
+
+            // 2. Round shortcuts into places that already exist.
             item(key = "shortcuts") {
                 ShortcutRow(
                     likedCount = liked.size,
@@ -197,6 +248,8 @@ private fun HomeContent(
                     actions = actions,
                 )
             }
+
+            // 3. Jump back in: poster cards (recent plays topped up with newest downloads).
             if (quick.isNotEmpty()) {
                 item(key = "jump_h") {
                     SectionHeader(
@@ -223,6 +276,8 @@ private fun HomeContent(
                     }
                 }
             }
+
+            // 4. Moods in two rows.
             item(key = "moods_h") {
                 SectionHeader(
                     title = stringResource(R.string.home_moods),
@@ -230,6 +285,8 @@ private fun HomeContent(
                 )
             }
             item(key = "moods") { MoodGrid(actions) }
+
+            // 5. Top artists.
             if (home.topArtists.isNotEmpty()) {
                 item(key = "top_artists_h") {
                     SectionHeader(
@@ -248,6 +305,8 @@ private fun HomeContent(
                     }
                 }
             }
+
+            // 5b. Radios: YouTube's own radio (mix) of songs you listen to; opens as a full song list.
             if (home.active && radioSeeds.isNotEmpty()) {
                 item(key = "radios_h") {
                     SectionHeader(
@@ -271,6 +330,8 @@ private fun HomeContent(
                     }
                 }
             }
+
+            // 6. Explore: the existing YouTube feed (subscriptions, trending, related, artist shelves).
             if (home.subFeed.isNotEmpty()) {
                 songShelf(
                     key = "subs",
@@ -289,6 +350,7 @@ private fun HomeContent(
                     SubscriptionsTip(onClick = actions::openSubscriptions)
                 }
             }
+
             if (home.active && home.loading && home.trending.isEmpty()) {
                 item(key = "skeleton_h") {
                     SectionHeader(
@@ -307,13 +369,10 @@ private fun HomeContent(
                         modifier = Modifier.padding(top = Dimens.xl, bottom = Dimens.xs),
                     )
                 }
-                itemsIndexed(home.trending.take(TRENDING_RANKED), key = { _, song -> "rank_${song.id}" }) { index, song ->
-                    RankedSongRow(
-                        rank = index + 1,
-                        song = song,
-                        list = home.trending,
-                        index = index,
-                        current = song.id.toString() == currentId,
+                item(key = "trending_columns") {
+                    TrendingColumns(
+                        songs = home.trending.take(TRENDING_SHOWN),
+                        currentId = currentId,
                         playing = playback.isPlaying,
                         liked = liked,
                         actions = actions,
@@ -335,7 +394,7 @@ private fun HomeContent(
                 songShelf(
                     key = "downloaded",
                     title = context.getString(R.string.home_downloaded),
-                    songs = visible.songs.sortedByDescending { it.dateAdded }.take(RECENT_SHELF_SIZE),
+                    songs = recentDownloads,
                     currentId = currentId,
                     playing = playback.isPlaying,
                     liked = liked,
@@ -357,6 +416,7 @@ private fun HomeContent(
                     onSeeAll = { actions.openOnlineList(shelf.name, shelf.name) },
                 )
             }
+
             if (home.active) {
                 item(key = "categories_h") {
                     SectionHeader(
@@ -364,8 +424,10 @@ private fun HomeContent(
                         modifier = Modifier.padding(top = Dimens.xl, bottom = Dimens.sm),
                     )
                 }
-                item(key = "categories") { GenreGrid(actions) }
+                item(key = "categories") { GenreGrid(home.categories, actions) }
             }
+
+            // F-97: the play log as a shelf. Newest first; stays when the online toggle is off.
             songShelf(
                 key = "history",
                 title = context.getString(R.string.home_history),
@@ -378,6 +440,8 @@ private fun HomeContent(
         }
     }
 }
+
+/** One horizontal shelf: a header (with optional "See all") and a row of song cards that play on tap. */
 private fun LazyListScope.songShelf(
     key: String,
     title: String,
@@ -388,6 +452,7 @@ private fun LazyListScope.songShelf(
     actions: MusicActions,
     seeAll: String? = null,
     onSeeAll: (() -> Unit)? = null,
+    /** Big wide cards (Subscriptions, Trending) instead of the small square ones. */
     big: Boolean = false,
 ) {
     if (songs.isEmpty()) return
@@ -429,6 +494,8 @@ private fun LazyListScope.songShelf(
         }
     }
 }
+
+/** Up to six online songs, one per artist, to build radios from: most played artists, then recent plays, then trending. */
 private fun radioSeeds(top: List<Song>, history: List<Song>, trending: List<Song>): List<Song> {
     val seen = HashSet<String>()
     val out = ArrayList<Song>(RADIO_SEEDS)
@@ -440,7 +507,10 @@ private fun radioSeeds(top: List<Song>, history: List<Song>, trending: List<Song
     }
     return out
 }
+
 private const val RADIO_SEEDS = 6
+
+/** One radio: the seed song's thumbnail with a radio badge, "<Artist> Radio" and where it starts. */
 @Composable
 private fun RadioCard(seed: Song, onClick: () -> Unit) {
     val colors = AppTheme.colors
@@ -489,6 +559,8 @@ private fun RadioCard(seed: Song, onClick: () -> Unit) {
         AppText(stringResource(R.string.radio_card_subtitle, seed.title), AppTheme.type.caption, color = colors.textSecondary)
     }
 }
+
+/** Grey placeholder cards shown while the very first shelf loads (no cache yet). */
 @Composable
 private fun ShelfSkeleton() {
     val colors = AppTheme.colors
@@ -525,6 +597,12 @@ private fun ShelfSkeleton() {
         }
     }
 }
+
+/**
+ * The Home hero. While something is loaded in the player it is a full-bleed artwork card (title and a
+ * play pill laid over a dark gradient) that opens the player; otherwise a brand-gradient card that
+ * offers "shuffle all" (or "discover" when nothing is saved yet).
+ */
 @Composable
 private fun HeroCard(
     playback: PlaybackUi,
@@ -640,6 +718,7 @@ private fun HeroCard(
         }
     }
 }
+
 @Composable
 private fun HeroPlayPill(playing: Boolean, onClick: () -> Unit) {
     val colors = AppTheme.colors
@@ -666,6 +745,9 @@ private fun HeroPlayPill(playing: Boolean, onClick: () -> Unit) {
         AppText(label, AppTheme.type.label, color = colors.canvas)
     }
 }
+
+/** F-98: a Home shelf card with the shared song-action menu. Long-press opens it; the tap
+ * still plays the card. Wraps [OnlineSongCard] visually unchanged. */
 @Composable
 private fun SongShelfCard(
     song: Song,
@@ -701,6 +783,8 @@ private fun SongShelfCard(
         )
     }
 }
+
+/** One online song inside a Home shelf. Mirrors the AlbumCard look with YouTube's thumbnail. */
 @Composable
 private fun OnlineSongCard(
     song: Song,
@@ -749,6 +833,7 @@ private fun OnlineSongCard(
                 AppText(song.artist, AppTheme.type.caption, color = colors.textSecondary)
             }
             if (onMore != null) {
+                // F-109: a visible, 48dp "more" target; long-press still works as a shortcut.
                 IconAction(
                     icon = R.drawable.ic_more,
                     description = stringResource(R.string.cd_more_options, song.title),
@@ -759,6 +844,8 @@ private fun OnlineSongCard(
         }
     }
 }
+
+/** F-130: a big feed card with the shared song-action menu on long-press. */
 @Composable
 private fun BigShelfCard(
     song: Song,
@@ -793,6 +880,8 @@ private fun BigShelfCard(
         )
     }
 }
+
+/** Shown while nothing is subscribed: one quiet card that explains how and opens Subscriptions. */
 @Composable
 private fun SubscriptionsTip(onClick: () -> Unit) {
     val colors = AppTheme.colors
@@ -826,6 +915,8 @@ private fun SubscriptionsTip(onClick: () -> Unit) {
         }
     }
 }
+
+/** Round artist avatar (artwork of their newest play) with the name underneath. */
 @Composable
 private fun TopArtistBubble(song: Song, avatar: String?, onClick: () -> Unit) {
     val label = stringResource(R.string.cd_open_artist, song.artist)
@@ -857,8 +948,11 @@ private fun TopArtistBubble(song: Song, avatar: String?, onClick: () -> Unit) {
         )
     }
 }
+
+
+/** The real app logo: the launcher's mipmap background + foreground, rounded; nothing redrawn. */
 @Composable
-private fun AppLogo(size: androidx.compose.ui.unit.Dp) {
+internal fun AppLogo(size: androidx.compose.ui.unit.Dp) {
     Box(
         Modifier
             .size(size)
@@ -869,6 +963,7 @@ private fun AppLogo(size: androidx.compose.ui.unit.Dp) {
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
         )
+        // The adaptive foreground has a safe-zone margin; scale it up so the mark fills the tile.
         androidx.compose.foundation.Image(
             painter = painterResource(R.mipmap.ic_launcher_foreground),
             contentDescription = null,
@@ -881,6 +976,8 @@ private fun AppLogo(size: androidx.compose.ui.unit.Dp) {
         )
     }
 }
+
+/** Logo, greeting + library line, and two glass buttons (search, settings). */
 @Composable
 private fun HomeHeader(subtitle: String, onSearch: () -> Unit, onSettings: () -> Unit) {
     val colors = AppTheme.colors
@@ -901,6 +998,7 @@ private fun HomeHeader(subtitle: String, onSearch: () -> Unit, onSettings: () ->
             )
             AppText(text = subtitle, style = AppTheme.type.bodySmall, color = colors.textSecondary, maxLines = 1)
         }
+        // Search and settings share one pill (glass, or a solid pill when glass is off).
         GlassIconPill(fallback = colors.surfaceRaised) {
             IconAction(
                 icon = R.drawable.ic_search,
@@ -915,7 +1013,10 @@ private fun HomeHeader(subtitle: String, onSearch: () -> Unit, onSettings: () ->
         }
     }
 }
+
 private class Shortcut(val label: Int, val icon: Int, val onClick: () -> Unit)
+
+/** Round shortcuts (icon disc + label) into screens that already exist. */
 @Composable
 private fun ShortcutRow(likedCount: Int, hasDownloads: Boolean, actions: MusicActions) {
     val colors = AppTheme.colors
@@ -975,6 +1076,8 @@ private fun ShortcutRow(likedCount: Int, hasDownloads: Boolean, actions: MusicAc
         }
     }
 }
+
+/** A tall poster card: artwork fills the card, title over a gradient, small play / now-playing badge. */
 @Composable
 private fun PosterCard(
     song: Song,
@@ -1067,6 +1170,8 @@ private fun PosterCard(
         onOpenDetails = { actions.openSongDetails(song) },
     )
 }
+
+/** Moods in two horizontally scrolling rows of glass pills. */
 @Composable
 private fun MoodGrid(actions: MusicActions) {
     androidx.compose.foundation.lazy.grid.LazyHorizontalGrid(
@@ -1096,6 +1201,57 @@ private fun MoodGrid(actions: MusicActions) {
         }
     }
 }
+
+/**
+ * Trending as three horizontally swipeable columns of five ranked songs: 1-5, 6-10, 11-15.
+ * Each column is one screen wide, so a swipe moves to the next five; a short last column stays
+ * top-aligned.
+ */
+@Composable
+private fun TrendingColumns(
+    songs: List<Song>,
+    currentId: String?,
+    playing: Boolean,
+    liked: Set<Long>,
+    actions: MusicActions,
+) {
+    if (songs.isEmpty()) return
+    val state = rememberLazyListState()
+    val pages = (songs.size + TRENDING_PER_COLUMN - 1) / TRENDING_PER_COLUMN
+    LazyRow(
+        state = state,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = TRENDING_ROW_HEIGHT * TRENDING_PER_COLUMN),
+        flingBehavior = rememberSnapFlingBehavior(state),
+    ) {
+        items(count = pages, key = { it }) { page ->
+            Column(
+                Modifier
+                    .fillParentMaxWidth()
+                    .padding(start = Dimens.screenEdge),
+            ) {
+                val first = page * TRENDING_PER_COLUMN
+                val last = minOf(first + TRENDING_PER_COLUMN, songs.size)
+                for (index in first until last) {
+                    val song = songs[index]
+                    RankedSongRow(
+                        rank = index + 1,
+                        song = song,
+                        list = songs,
+                        index = index,
+                        current = song.id.toString() == currentId,
+                        playing = playing,
+                        liked = liked,
+                        actions = actions,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** One row of the ranked trending list: big rank number, artwork, title / artist, more. */
 @Composable
 private fun RankedSongRow(
     rank: Int,
@@ -1113,13 +1269,13 @@ private fun RankedSongRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 68.dp)
+            .heightIn(min = TRENDING_ROW_HEIGHT)
             .clickableScale(
                 pressedScale = 0.99f,
                 onLongClick = { menuOpen = true },
                 onClick = { actions.playSongs(list, index) },
             )
-            .padding(start = Dimens.screenEdge, end = Dimens.xs, top = Dimens.xs, bottom = Dimens.xs)
+            .padding(end = Dimens.xs, top = Dimens.xs, bottom = Dimens.xs)
             .semantics(mergeDescendants = true) { contentDescription = "$rank. $description" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1168,25 +1324,30 @@ private fun RankedSongRow(
         onOpenDetails = { actions.openSongDetails(song) },
     )
 }
+
+/** The category tiles (they follow the phone's country and languages and what is played) as a two-column grid; each opens the online list. */
 @Composable
-private fun GenreGrid(actions: MusicActions) {
+private fun GenreGrid(categories: List<HomeCategorySpec>, actions: MusicActions) {
     Column(
         Modifier.padding(horizontal = Dimens.screenEdge),
         verticalArrangement = Arrangement.spacedBy(Dimens.md),
     ) {
-        HOMEPAGE_CATEGORIES.chunked(2).forEach { pair ->
+        categories.chunked(2).forEach { pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.md)) {
                 pair.forEach { category ->
-                    val label = stringResource(category.label)
+                    val label = categoryLabel(category)
                     Box(
                         Modifier
                             .weight(1f)
                             .height(76.dp)
                             .clip(RoundedCornerShape(Dimens.radiusLarge))
                             .clickableScale(pressedScale = 0.97f) { actions.openOnlineList(label, category.query) }
-                            .background(placeholderBrush(label))
                             .semantics { contentDescription = label },
                     ) {
+                        CategoryArt(
+                            kind = categoryArt(category.kind),
+                            modifier = Modifier.matchParentSize(),
+                        )
                         AppText(
                             text = label,
                             style = AppTheme.type.bodyStrong,

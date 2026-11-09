@@ -1,4 +1,5 @@
 package com.dopavin.ui.screens
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Row
@@ -43,12 +44,16 @@ import com.dopavin.ui.components.formatTime
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import java.util.Locale
+
 private fun dbText(mb: Int): String {
     val db = mb / 100f
     return String.format(Locale.ROOT, "%+.1f dB", db)
 }
+
 private fun freqText(hz: Int): String =
     if (hz >= 1000) String.format(Locale.ROOT, "%.1f kHz", hz / 1000f).replace(".0 ", " ") else "$hz Hz"
+
+/** The equaliser, bass boost and loudness controls. Scrolls inside whatever hosts it. */
 @Composable
 fun EqualizerPanel(
     effects: EffectsState,
@@ -65,6 +70,7 @@ fun EqualizerPanel(
             icon = R.drawable.ic_equalizer,
         )
         if (!effects.available) return@Column
+
         if (effects.presets.isNotEmpty()) {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = Dimens.screenEdge),
@@ -80,6 +86,7 @@ fun EqualizerPanel(
                 }
             }
         }
+
         effects.levelsMb.forEachIndexed { band, level ->
             val freq = effects.bandFreqsHz.getOrNull(band) ?: 0
             Row(
@@ -112,6 +119,7 @@ fun EqualizerPanel(
                 )
             }
         }
+
         SectionHeader(
             title = stringResource(R.string.sound_boosts),
             modifier = Modifier.padding(top = Dimens.xl, bottom = Dimens.xs),
@@ -140,6 +148,7 @@ fun EqualizerPanel(
         }
     }
 }
+
 @Composable
 private fun SliderRow(
     label: String,
@@ -177,6 +186,8 @@ private fun SliderRow(
         )
     }
 }
+
+/** Full-screen equaliser, reached from Settings. */
 @Composable
 fun EqualizerScreen(effects: EffectsState, actions: MusicActions) {
     Column(Modifier.fillMaxSize()) {
@@ -192,6 +203,8 @@ fun EqualizerScreen(effects: EffectsState, actions: MusicActions) {
         }
     }
 }
+
+/** Playback speed presets. Pitch follows speed (a simple, predictable behaviour). */
 @Composable
     fun SpeedPicker(speed: Float, actions: MusicActions) {
     Column(Modifier.padding(horizontal = Dimens.screenEdge, vertical = Dimens.sm)) {

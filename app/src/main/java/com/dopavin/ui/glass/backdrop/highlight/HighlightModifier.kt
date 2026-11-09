@@ -1,4 +1,14 @@
+/*
+ * Vendored from Kyant0/backdrop v2.0.0 (io.github.kyant0:backdrop)
+ * https://github.com/Kyant0/backdrop — Copyright 2025 Kyant0, Apache License 2.0
+ *
+ * Vendored so the library ships as source with this app (binary AARs compiled
+ * against older Compose broke at runtime) and to add a backdrop resolution
+ * scale for cheaper effect rendering. KMP expect/actual declarations were
+ * merged into this single Android source set. Package renamed accordingly.
+ */
 package com.dopavin.ui.glass.backdrop.highlight
+
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Paint
@@ -25,65 +35,84 @@ import com.dopavin.ui.glass.backdrop.internal.clipOutline
 import com.dopavin.ui.glass.backdrop.internal.setRuntimeShader
 import com.dopavin.ui.glass.backdrop.isRuntimeShaderSupported
 import kotlin.math.ceil
+
 internal class HighlightElement(
     val shapeProvider: ShapeProvider,
     val highlight: () -> Highlight?
 ) : ModifierNodeElement<HighlightNode>() {
+
     override fun create(): HighlightNode {
         return HighlightNode(shapeProvider, highlight)
     }
+
     override fun update(node: HighlightNode) {
         node.shapeProvider = shapeProvider
         node.highlight = highlight
         node.invalidateDraw()
     }
+
     override fun InspectorInfo.inspectableProperties() {
         name = "highlight"
         properties["shapeProvider"] = shapeProvider
         properties["highlight"] = highlight
     }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is HighlightElement) return false
+
         if (shapeProvider != other.shapeProvider) return false
         if (highlight != other.highlight) return false
+
         return true
     }
+
     override fun hashCode(): Int {
         var result = shapeProvider.hashCode()
         result = 31 * result + highlight.hashCode()
         return result
     }
 }
+
 internal class HighlightNode(
     var shapeProvider: ShapeProvider,
     var highlight: () -> Highlight?
 ) : DrawModifierNode, Modifier.Node() {
+
     override val shouldAutoInvalidate: Boolean = false
+
     private var highlightLayer: GraphicsLayer? = null
+
     private val paint =
         Paint().apply {
             style = PaintingStyle.Stroke
         }
     private var clipPath: Path? = null
+
     private val runtimeShaderCache = RuntimeShaderCacheImpl()
+
     private var prevStyle: HighlightStyle? = null
+
     override fun ContentDrawScope.draw() {
         val highlight = highlight()
         if (highlight == null || highlight.width.value <= 0f) {
             return drawContent()
         }
+
         drawContent()
+
         val highlightLayer = highlightLayer
         if (highlightLayer != null) {
             val size = size
             val density: Density = this
             val layoutDirection = layoutDirection
+
             val safeSize =
                 IntSize(
                     ceil(size.width).toInt() + 2,
                     ceil(size.height).toInt() + 2
                 )
+
             val outline = shapeProvider.shape.createOutline(size, layoutDirection, density)
             val clipPath =
                 if (outline is Outline.Rounded) {
@@ -91,7 +120,9 @@ internal class HighlightNode(
                 } else {
                     null
                 }
+
             configurePaint(highlight)
+
             highlightLayer.alpha = highlight.alpha
             highlightLayer.blendMode = highlight.style.blendMode
             highlightLayer.record(safeSize) {
@@ -103,15 +134,18 @@ internal class HighlightNode(
                     canvas.restore()
                 }
             }
+
             translate(-1f, -1f) {
                 drawLayer(highlightLayer)
             }
         }
     }
+
     override fun onAttach() {
         val graphicsContext = requireGraphicsContext()
         highlightLayer = graphicsContext.createGraphicsLayer()
     }
+
     override fun onDetach() {
         val graphicsContext = requireGraphicsContext()
         highlightLayer?.let { layer ->
@@ -122,6 +156,7 @@ internal class HighlightNode(
         runtimeShaderCache.clear()
         prevStyle = null
     }
+
     private fun DrawScope.configurePaint(highlight: Highlight) {
         paint.color = highlight.style.color
         paint.strokeWidth = ceil(highlight.width.toPx().fastCoerceAtMost(size.minDimension / 2f)) * 2f

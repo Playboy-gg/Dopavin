@@ -1,10 +1,17 @@
 package com.dopavin.playback
+
 import android.content.Context
+import android.os.Bundle
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import com.dopavin.R
 import com.dopavin.data.HistoryStore
 import com.dopavin.data.OnlineRepository
@@ -18,16 +25,73 @@ import com.google.common.util.concurrent.SettableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlinx.coroutines.runBlocking
-class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Callback {
+
+/**
+ * F-222: what Android Auto (and any other media browser, e.g. Bluetooth car screens) can browse:
+ * Recently played, Favourites and Playlists. Songs are the same ones the app plays; a tapped song is turned
+ * back into a full playable item in [onAddMediaItems] (browsers only send the id).
+ *
+ * Unverified: needs a car or the Desktop Head Unit to see it. Not run in the sandbox.
+ */
+@OptIn(UnstableApi::class)
+class LibraryTree(
+    context: Context,
+    /** The notification's X button: stop everything and close the app. */
+    private val onKillApp: () -> Unit,
+) : MediaLibraryService.MediaLibrarySession.Callback {
+
     private val app = context.applicationContext
     private val worker = Executors.newSingleThreadExecutor()
+
+    /** Everything shown in a browse list, by media id, so a tap can be resolved to the real song. */
     private val catalog = ConcurrentHashMap<String, Song>()
+
+    /** The notification buttons are custom commands, so trusted controllers must know them. */
+    override fun onConnect(
+        session: MediaSession,
+        controller: MediaSession.ControllerInfo,
+    ): MediaSession.ConnectionResult {
+        val result = MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+        // The service is exported for Android Auto; only our own controllers may kill the app.
+        if (controller.packageName != app.packageName) return result.build()
+        val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
+            .buildUpon()
+            .addSessionCommands(PlaybackNotification.customCommands)
+            .build()
+        return result.setAvailableSessionCommands(commands).build()
+    }
+
+    override fun onCustomCommand(
+        session: MediaSession,
+        controller: MediaSession.ControllerInfo,
+        customCommand: SessionCommand,
+        args: Bundle,
+    ): ListenableFuture<SessionResult> {
+        when (customCommand.customAction) {
+            PlaybackNotification.ACTION_CYCLE_REPEAT -> {
+                val player = session.player
+                player.repeatMode = when (player.repeatMode) {
+                    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                    else -> Player.REPEAT_MODE_OFF
+                }
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            PlaybackNotification.ACTION_KILL_APP -> {
+                onKillApp()
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+        }
+        return super.onCustomCommand(session, controller, customCommand, args)
+    }
+
     override fun onGetLibraryRoot(
         session: MediaLibraryService.MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
         params: MediaLibraryService.LibraryParams?,
     ): ListenableFuture<LibraryResult<MediaItem>> =
         Futures.immediateFuture(LibraryResult.ofItem(folder(ROOT, app.getString(R.string.app_name)), params))
+
     override fun onGetItem(
         session: MediaLibraryService.MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
@@ -46,6 +110,7 @@ class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Ca
             if (item != null) LibraryResult.ofItem(item, null) else LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE),
         )
     }
+
     override fun onGetChildren(
         session: MediaLibraryService.MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
@@ -67,6 +132,8 @@ class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Ca
         }
         return future
     }
+
+    /** A browser sends only ids; this fills in the playable address and metadata of songs we listed. */
     override fun onAddMediaItems(
         mediaSession: MediaSession,
         controller: MediaSession.ControllerInfo,
@@ -75,6 +142,7 @@ class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Ca
         Futures.immediateFuture(
             mediaItems.map { item -> catalog[item.mediaId]?.toMediaItem() ?: item }.toMutableList(),
         )
+
     private fun children(parentId: String): List<MediaItem> = when {
         parentId == ROOT -> listOf(
             folder(RECENT, app.getString(R.string.auto_recent)),
@@ -91,16 +159,19 @@ class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Ca
             songs(runBlocking { PlaylistStore(app).load(parentId.removePrefix(PL_PREFIX)) }?.songs.orEmpty().take(LIST_LIMIT))
         else -> emptyList()
     }
+
     private fun songs(list: List<Song>): List<MediaItem> = list.map { song ->
         catalog[song.id.toString()] = song
         playable(song)
     }
+
     private fun playable(song: Song): MediaItem {
         val item = song.toMediaItem()
         return item.buildUpon()
             .setMediaMetadata(item.mediaMetadata.buildUpon().setIsBrowsable(false).setIsPlayable(true).build())
             .build()
     }
+
     private fun folder(id: String, title: String): MediaItem =
         MediaItem.Builder()
             .setMediaId(id)
@@ -113,6 +184,7 @@ class LibraryTree(context: Context) : MediaLibraryService.MediaLibrarySession.Ca
                     .build(),
             )
             .build()
+
     private companion object {
         const val ROOT = "root"
         const val RECENT = "recent"

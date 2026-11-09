@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,12 @@ import com.dopavin.data.ArtworkSize
 import com.dopavin.data.Song
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
+
+/**
+ * The big feed card: a wide 16:9 thumbnail with the title and artist laid over a dark gradient and
+ * the duration in a corner. Used for Subscriptions and Trending; small square cards stay for the
+ * secondary shelves.
+ */
 @Composable
 fun FeedBigCard(
     song: Song,

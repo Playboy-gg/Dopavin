@@ -3,6 +3,8 @@
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+
+    <!-- Drawn in code (WidgetStyle.background): blurred artwork ambience, sheen and rim. -->
     <ImageView
         android:id="@+id/widget_bg"
         android:layout_width="match_parent"
@@ -10,6 +12,7 @@
         android:contentDescription="@null"
         android:scaleType="fitXY"
         android:src="@drawable/widget_bg" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -19,18 +22,21 @@
         android:paddingTop="10dp"
         android:paddingEnd="10dp"
         android:paddingBottom="10dp">
+
         <ImageView
             android:id="@+id/widget_art"
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:contentDescription="@null"
             android:scaleType="fitCenter" />
+
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_weight="1"
             android:orientation="vertical">
+
             <TextView
                 android:id="@+id/widget_title"
                 android:layout_width="match_parent"
@@ -40,6 +46,7 @@
                 android:textColor="#FFFFFFFF"
                 android:textSize="15sp"
                 android:textStyle="bold" />
+
             <TextView
                 android:id="@+id/widget_artist"
                 android:layout_width="match_parent"
@@ -49,6 +56,7 @@
                 android:textColor="#CCFFFFFF"
                 android:textSize="13sp" />
         </LinearLayout>
+
         <ImageButton
             android:id="@+id/widget_prev"
             android:layout_width="38dp"
@@ -58,6 +66,7 @@
             android:padding="9dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_skip_previous" />
+
         <ImageButton
             android:id="@+id/widget_play"
             android:layout_width="46dp"
@@ -69,6 +78,7 @@
             android:padding="11dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_play" />
+
         <ImageButton
             android:id="@+id/widget_next"
             android:layout_width="38dp"

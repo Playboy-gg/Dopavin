@@ -1,4 +1,13 @@
+/*
+ * Vendored from Kyant0/AndroidLiquidGlass (kmp branch)
+ * https://github.com/Kyant0/AndroidLiquidGlass — Copyright 2025 Kyant0, Apache License 2.0
+ * app/src/commonMain/kotlin/com/kyant/backdrop/catalog/utils/DampedDragAnimation.kt
+ *
+ * Not published as a library — ported straight from the catalog demo app that
+ * showcases Kyant0/backdrop, source-only. Package renamed accordingly.
+ */
 package com.dopavin.ui.glass.interaction
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.MutatorMutex
@@ -13,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
 class DampedDragAnimation(
     private val animationScope: CoroutineScope,
     val initialValue: Float,
@@ -25,6 +35,7 @@ class DampedDragAnimation(
     val onDrag: DampedDragAnimation.(size: IntSize, dragAmount: Offset) -> Unit,
     val velocityDampingRatio: Float = 0.5f,
 ) {
+
     private val valueAnimationSpec =
         spring(1f, 1000f, visibilityThreshold)
     private val velocityAnimationSpec =
@@ -35,6 +46,7 @@ class DampedDragAnimation(
         spring(0.6f, 250f, 0.001f)
     private val scaleYAnimationSpec =
         spring(0.7f, 250f, 0.001f)
+
     private val valueAnimation =
         Animatable(initialValue, visibilityThreshold)
     private val velocityAnimation =
@@ -45,8 +57,11 @@ class DampedDragAnimation(
         Animatable(initialScale, 0.001f)
     private val scaleYAnimation =
         Animatable(initialScale, 0.001f)
+
     private val mutatorMutex = MutatorMutex()
+
     private val velocityTracker = VelocityTracker()
+
     val value: Float get() = valueAnimation.value
     val progress: Float get() = (value - valueRange.start) / (valueRange.endInclusive - valueRange.start)
     val targetValue: Float get() = valueAnimation.targetValue
@@ -54,6 +69,7 @@ class DampedDragAnimation(
     val scaleX: Float get() = scaleXAnimation.value
     val scaleY: Float get() = scaleYAnimation.value
     val velocity: Float get() = velocityAnimation.value
+
     val modifier: Modifier = Modifier.pointerInput(Unit) {
         inspectDragGestures(
             onDragStart = { down ->
@@ -72,6 +88,7 @@ class DampedDragAnimation(
             onDrag(size, dragAmount)
         }
     }
+
     fun press() {
         velocityTracker.resetTracking()
         animationScope.launch {
@@ -80,6 +97,7 @@ class DampedDragAnimation(
             launch { scaleYAnimation.animateTo(pressedScale, scaleYAnimationSpec) }
         }
     }
+
     fun release() {
         animationScope.launch {
             awaitFrame()
@@ -94,15 +112,18 @@ class DampedDragAnimation(
             launch { scaleYAnimation.animateTo(initialScale, scaleYAnimationSpec) }
         }
     }
+
     suspend fun snapValue(value: Float) {
         valueAnimation.snapTo(value.coerceIn(valueRange))
     }
+
     fun updateValue(value: Float) {
         val targetValue = value.coerceIn(valueRange)
         animationScope.launch {
             launch { valueAnimation.animateTo(targetValue, valueAnimationSpec) { updateVelocity() } }
         }
     }
+
     fun animateToValue(value: Float) {
         animationScope.launch {
             mutatorMutex.mutate {
@@ -116,6 +137,7 @@ class DampedDragAnimation(
             }
         }
     }
+
     private fun updateVelocity() {
         velocityTracker.addPosition(
             System.nanoTime() / 1_000_000L,
@@ -125,6 +147,7 @@ class DampedDragAnimation(
         animationScope.launch { velocityAnimation.animateTo(targetVelocity, velocityAnimationSpec) }
     }
 }
+
 private suspend fun awaitFrame() {
     androidx.compose.runtime.withFrameNanos { }
 }

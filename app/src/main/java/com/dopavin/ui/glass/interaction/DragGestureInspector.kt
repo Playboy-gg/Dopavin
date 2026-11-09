@@ -1,4 +1,13 @@
+/*
+ * Vendored from Kyant0/AndroidLiquidGlass (kmp branch)
+ * https://github.com/Kyant0/AndroidLiquidGlass — Copyright 2025 Kyant0, Apache License 2.0
+ * app/src/commonMain/kotlin/com/kyant/backdrop/catalog/utils/DragGestureInspector.kt
+ *
+ * Not published as a library — ported straight from the catalog demo app that
+ * showcases Kyant0/backdrop, source-only. Package renamed accordingly.
+ */
 package com.dopavin.ui.glass.interaction
+
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.geometry.Offset
@@ -10,6 +19,7 @@ import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.util.fastFirstOrNull
+
 suspend fun PointerInputScope.inspectDragGestures(
     onDragStart: (down: PointerInputChange) -> Unit = {},
     onDragEnd: (change: PointerInputChange) -> Unit = {},
@@ -18,8 +28,10 @@ suspend fun PointerInputScope.inspectDragGestures(
 ) {
     awaitEachGesture {
         val initialDown = awaitFirstDown(false, PointerEventPass.Initial)
+
         val down = awaitFirstDown(false)
         val drag = initialDown
+
         onDragStart(down)
         onDrag(drag, Offset.Zero)
         val upEvent =
@@ -34,6 +46,7 @@ suspend fun PointerInputScope.inspectDragGestures(
         }
     }
 }
+
 private suspend inline fun AwaitPointerEventScope.drag(
     pointerId: PointerId,
     onDrag: (PointerInputChange) -> Unit
@@ -55,6 +68,7 @@ private suspend inline fun AwaitPointerEventScope.drag(
         pointer = change.id
     }
 }
+
 private suspend inline fun AwaitPointerEventScope.awaitDragOrUp(
     pointerId: PointerId
 ): PointerInputChange? {

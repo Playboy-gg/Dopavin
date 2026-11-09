@@ -1,4 +1,5 @@
 package com.dopavin.data
+
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,17 +14,32 @@ import java.net.URL
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+
+/**
+ * F-207: downloads the release APK into the app's own cache, checks that it really is an update of this app,
+ * and hands it to the system installer. The app never installs silently: Android shows its own install screen,
+ * and refuses the file itself when the signing key differs, so a wrong or tampered APK cannot replace the app.
+ */
 object UpdateInstaller {
+
     enum class Reason { Network, Storage, Invalid, NotUpdate, Signature }
+
     sealed interface Download {
         data class Ok(val file: File) : Download
         data class Failed(val reason: Reason) : Download
     }
+
     enum class Install { Started, NeedsPermission, Failed }
+
     private fun dir(context: Context) = File(context.cacheDir, "updates")
+
+    /** A file name that cannot leave the folder, whatever the release tag contains. */
     fun safeName(tag: String): String =
         "Dopavin-" + tag.filter { it.isLetterOrDigit() || it == '.' || it == '-' }.ifEmpty { "update" } + ".apk"
+
     fun fileFor(context: Context, tag: String) = File(dir(context), safeName(tag))
+
+    /** Streams [url] (https only) into the cache folder. Cancelling the coroutine stops it and removes the partial file. */
     suspend fun download(
         context: Context,
         url: String,
@@ -83,6 +99,11 @@ object UpdateInstaller {
             part.delete()
         }
     }
+
+    /**
+     * Null when [file] is an APK of this app with a higher version code (and, where Android exposes it, the same
+     * signing certificate); otherwise why not. The system installer repeats the signature check regardless.
+     */
     fun verify(context: Context, file: File): Reason? {
         if (!file.isFile || file.length() == 0L) return Reason.Invalid
         val pm = context.packageManager
@@ -105,16 +126,23 @@ object UpdateInstaller {
         if (a != null && b != null && a != b) return Reason.Signature
         return null
     }
+
     @Suppress("DEPRECATION")
     private fun signers(info: android.content.pm.PackageInfo): Set<android.content.pm.Signature>? {
         val list = if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners else info.signatures
         return list?.takeIf { it.isNotEmpty() }?.toSet()
     }
+
+    /** A finished, still valid download of [tag] left from an earlier run, or null. */
     fun existing(context: Context, tag: String): File? =
         fileFor(context, tag).takeIf { verify(context, it) == null }
+
+    /** Removes every downloaded APK (called once the app is up to date). */
     fun clear(context: Context) {
         dir(context).listFiles()?.forEach { it.delete() }
     }
+
+    /** Opens the system installer for [file]; when installs from this app are not allowed yet, opens that setting instead. */
     fun install(context: Context, file: File): Install = try {
         if (Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
             context.startActivity(
@@ -134,5 +162,6 @@ object UpdateInstaller {
     } catch (e: Exception) {
         Install.Failed
     }
+
     private const val SPACE_MARGIN = 20L * 1024 * 1024
 }

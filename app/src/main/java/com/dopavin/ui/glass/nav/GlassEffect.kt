@@ -1,4 +1,5 @@
 package com.dopavin.ui.glass.nav
+
 import android.app.ActivityManager
 import android.os.Build
 import androidx.compose.foundation.background
@@ -30,6 +31,7 @@ import com.dopavin.ui.glass.backdrop.highlight.Highlight
 import com.dopavin.ui.glass.backdrop.highlight.HighlightStyle
 import com.dopavin.ui.glass.backdrop.isRenderEffectSupported
 import com.dopavin.ui.glass.backdrop.shadow.Shadow
+
 @Stable
 data class GlassEffectConfig(
     val globalEnabled: Boolean = true,
@@ -76,32 +78,45 @@ data class GlassEffectConfig(
             GlassComponent.NAV_BAR -> navBarEnabled
             GlassComponent.SIDE_PANEL -> sidePanelEnabled
         }
+
     val anyComponentEnabled: Boolean
         get() = globalEnabled &&
             (playerEnabled || miniPlayerEnabled || navBarEnabled || sidePanelEnabled)
 }
+
 enum class GlassStyle {
     LIQUID,
+
     BLUR,
+
     TRANSPARENT,
 }
+
 fun shouldUseTranslucentGlassFallback(style: GlassStyle, renderEffectSupported: Boolean): Boolean =
     style == GlassStyle.TRANSPARENT || !renderEffectSupported
+
 enum class GlassComponent {
     PLAYER,
     MINI_PLAYER,
     NAV_BAR,
     SIDE_PANEL,
 }
+
 internal const val LENS_MAX_DP = 48f
+
 internal const val PLAYER_BLUR_MULTIPLIER = 4f
+
 internal const val MIN_GLASS_RESOLUTION_SCALE = 0.30f
+
 internal const val FULL_QUALITY_BLUR_DP = 8f
+
 fun glassResolutionScale(blurRadiusDp: Float): Float {
     val t = (blurRadiusDp / FULL_QUALITY_BLUR_DP).coerceIn(0f, 1f)
     return 1f - t * (1f - MIN_GLASS_RESOLUTION_SCALE)
 }
+
 fun isGlassSupported(sdkInt: Int = Build.VERSION.SDK_INT): Boolean = sdkInt >= Build.VERSION_CODES.S
+
 @Composable
 fun isLowRamDevice(): Boolean {
     val context = LocalContext.current
@@ -109,9 +124,12 @@ fun isLowRamDevice(): Boolean {
         context.getSystemService(ActivityManager::class.java)?.isLowRamDevice ?: false
     }
 }
+
 @Composable
 fun isGlassAllowed(): Boolean = isGlassSupported() && !isLowRamDevice()
+
 fun glassSaturation(vibrancy: Float): Float = 1f + 0.5f * vibrancy.coerceIn(0f, 2f)
+
 fun glassContentColorFor(behind: Color, tint: Color, opacity: Float): Color {
     val effective = if (tint.isSpecified) {
         lerp(behind, tint, opacity.coerceIn(0f, 1f))
@@ -120,16 +138,24 @@ fun glassContentColorFor(behind: Color, tint: Color, opacity: Float): Color {
     }
     return if (effective.luminance() > 0.5f) Color(0xFF1A1A1A) else Color.White
 }
+
 private val EdgeHighlightWidth = 0.8f.dp
 private const val EdgeHighlightAlpha = 0.55f
+
 private const val HighlightAngleMin = 25f
 private const val HighlightAngleMax = 65f
 private const val HighlightDriftMillis = 7000
+
 private const val HighlightAngleFrozen = (HighlightAngleMin + HighlightAngleMax) / 2f
+
 val LocalGlassEffectConfig = staticCompositionLocalOf { GlassEffectConfig() }
+
 val LocalAppBackdrop = staticCompositionLocalOf<Backdrop> { error("No AppBackdrop provided") }
+
 val LocalBackdropLoopBucket = staticCompositionLocalOf<(() -> Int)?> { null }
+
 val LocalAppleMusicUi = staticCompositionLocalOf { false }
+
 @Composable
 fun Modifier.liquidGlass(
     config: GlassEffectConfig,
@@ -156,14 +182,19 @@ fun Modifier.liquidGlass(
     } else {
         Color(0xFF4A4A4E)
     }
+
     if (shouldUseTranslucentGlassFallback(config.style, isRenderEffectSupported())) {
         return this
             .clip(shape)
             .background(surfaceTintColor.copy(alpha = config.surfaceOpacity.coerceIn(0f, 1f)))
     }
+
     val animatedHighlightAngle = HighlightAngleFrozen
+
     val shapeBlock: () -> Shape = remember(shape) { { shape } }
+
     val plainBlur = config.style == GlassStyle.BLUR
+
     val effectsBlock: BackdropEffectScope.() -> Unit = remember(
         saturation,
         blurPx,
@@ -195,8 +226,10 @@ fun Modifier.liquidGlass(
             }
         }
     }
+
     val rimColor = if (config.highlightColor.isSpecified) config.highlightColor else Color.White
     val rimAlpha = (highlightAlpha * (config.highlightOpacity / EdgeHighlightAlpha)).coerceIn(0f, 1f)
+
     val highlightBlock: (() -> Highlight?)? = remember(applyEdgeEffects, plainBlur, rimColor, rimAlpha, animatedHighlightAngle) {
         if (applyEdgeEffects && !plainBlur) {
             {
@@ -212,9 +245,11 @@ fun Modifier.liquidGlass(
             null
         }
     }
+
     val shadowBlock: (() -> Shadow?)? = remember(applyEdgeEffects) {
         if (applyEdgeEffects) ({ Shadow.Default }) else null
     }
+
     val surfaceBlock: DrawScope.() -> Unit = remember(surfaceTintColor, config.surfaceOpacity) {
         {
             if (config.surfaceOpacity > 0f) {
@@ -225,6 +260,7 @@ fun Modifier.liquidGlass(
             }
         }
     }
+
     return drawBackdrop(
         backdrop = backdrop,
         shape = shapeBlock,

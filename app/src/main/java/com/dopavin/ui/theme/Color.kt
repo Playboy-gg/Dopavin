@@ -1,8 +1,18 @@
 package com.dopavin.ui.theme
+
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+
+/**
+ * Semantic colour roles for Dopavin. Contrast ratios of every text/background pair are recorded in
+ * docs/03_DESIGN_SYSTEM.md (calculated). Change values here only, then re-run the contrast check.
+ *
+ * [accentStart] -> [accentEnd] is the brand gradient ("dopamine"): used for the primary play button,
+ * the seek bar, primary buttons and the launcher icon. [accent] is the solid colour used for text,
+ * thin strokes and selected states.
+ */
 @Immutable
 data class AppColors(
     val canvas: Color,
@@ -21,9 +31,13 @@ data class AppColors(
     val focusRing: Color,
     val isDark: Boolean,
 ) {
+    /** The brand gradient, diagonal. */
     val gradient: Brush get() = Brush.linearGradient(listOf(accentStart, accentEnd))
+
+    /** The brand gradient, left to right (seek bar). */
     val gradientHorizontal: Brush get() = Brush.horizontalGradient(listOf(accentStart, accentEnd))
 }
+
 val DarkColors = AppColors(
     canvas = Color(0xFF0B0B10),
     surface = Color(0xFF14141B),
@@ -41,6 +55,7 @@ val DarkColors = AppColors(
     focusRing = Color(0xFFFFB199),
     isDark = true,
 )
+
 val LightColors = AppColors(
     canvas = Color(0xFFFAF7F5),
     surface = Color(0xFFFFFFFF),
@@ -58,4 +73,5 @@ val LightColors = AppColors(
     focusRing = Color(0xFFC7203F),
     isDark = false,
 )
+
 val LocalAppColors = staticCompositionLocalOf { DarkColors }

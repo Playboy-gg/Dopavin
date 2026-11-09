@@ -1,4 +1,5 @@
 package com.dopavin.ui
+
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -107,6 +108,12 @@ import com.dopavin.ui.screens.SubscriptionsScreen
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import kotlinx.coroutines.launch
+
+/**
+ * Root of the UI: chooses between the access screen and the routed screens, hosts the snackbar,
+ * the floating mini player and the bottom navigation. Screens apply their own status-bar insets so
+ * artwork-tinted backgrounds can draw behind the system bars; the keyboard inset is applied here once.
+ */
 @Composable
 fun MusicApp(
     viewModel: MusicViewModel,
@@ -117,6 +124,8 @@ fun MusicApp(
     val searchUi by viewModel.searchUi.collectAsStateWithLifecycle()
     val online by viewModel.online.collectAsStateWithLifecycle()
     val homeOnline by viewModel.home.collectAsStateWithLifecycle()
+    val onboarding by viewModel.onboarding.collectAsStateWithLifecycle()
+    val updateDialog by viewModel.updateDialog.collectAsStateWithLifecycle()
     val onlineList by viewModel.onlineList.collectAsStateWithLifecycle()
     val subs by viewModel.subs.collectAsStateWithLifecycle()
     val artist by viewModel.artist.collectAsStateWithLifecycle()
@@ -138,14 +147,18 @@ fun MusicApp(
     val update by viewModel.update.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val queueOrigins by viewModel.origins.collectAsStateWithLifecycle()
+
     val colors = AppTheme.colors
     val motion = AppTheme.motion
     val context = LocalContext.current
     val toast = remember { com.dopavin.ui.components.ToastState() }
     val saveableStateHolder = rememberSaveableStateHolder()
     val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+
     val currentSong by viewModel.currentSong.collectAsStateWithLifecycle()
+
     LaunchedEffect(viewModel) {
+        // collectLatest: a newer notice replaces the one on screen at once.
         viewModel.messages.collectLatest { message ->
             val text = context.getString(message.res, *message.args.toTypedArray())
             toast.show(
@@ -154,10 +167,22 @@ fun MusicApp(
             )
         }
     }
+
+    // System back: close the top screen, or return to Home. Otherwise the system exits the app.
+    // Predictive back, iOS style: the page follows the finger sideways by how far it is dragged, the
+    // page underneath slides in from a parallax offset and un-dims as the drag grows. Letting go past the
+    // point finishes the move and goes back; dragging back cancels it. The player and the queue are layers
+    // with their own motion, so for them back just closes the layer.
+    // iOS timing used here (from UINavigationController behaviour, see docs/12_MOTION_RULES.md): a push/pop takes
+    // ~0.35 s; the page below travels a third of the width (parallax) and is dimmed; letting go finishes the
+    // move in the time that is left, not in a fixed time; nothing cross-fades. A modal sheet (Now Playing)
+    // follows the finger only a little while held, and leaves completely on release.
     val backProgress = remember { androidx.compose.animation.core.Animatable(0f) }
     var backDirection by remember { mutableStateOf(1f) }
     val backScope = androidx.compose.runtime.rememberCoroutineScope()
     val viewNow by androidx.compose.runtime.rememberUpdatedState(view)
+    // While a committed back waits for the new route to be composed, the page counts as "not moved" the moment
+    // the route changes, in the same frame (no frame where the old or the wrong page shows).
     var committedFrom by remember { mutableStateOf<Any?>(null) }
     val effBack = remember {
         androidx.compose.runtime.derivedStateOf {
@@ -165,6 +190,9 @@ fun MusicApp(
             if (c != null && (viewNow.stack to viewNow.destination) != c) 0f else backProgress.value
         }
     }
+    // Now Playing: offset as a fraction of the screen height. Held: at most ~12 %. Released: all the way.
+    // 1 = Now Playing fully down (closed), 0 = fully up (open). Opening, closing, dragging up from the mini
+    // player and the back gesture all move this one value, so nothing competes for the same property.
     val sheet = remember { androidx.compose.animation.core.Animatable(1f) }
     val artFlight = remember { com.dopavin.ui.components.ArtworkFlight() }.also {
         it.sheet = { sheet.value }
@@ -193,6 +221,7 @@ fun MusicApp(
         androidx.compose.runtime.withFrameNanos { }
         backSwap = false
     }
+    // Back button: the same slide as the gesture instead of a cross-fade (no flash of the other page).
     val requestBack: () -> Unit = {
         if (!pageAnimatesBack) {
             viewModel.back()
@@ -219,6 +248,7 @@ fun MusicApp(
             }
             if (playerGesture) {
                 sheet.animateTo(1f, com.dopavin.ui.motion.MotionSpecs.slide(com.dopavin.ui.motion.MotionTokens.PlayerExitMs))
+                // The sheet is already off screen, so the route change shows nothing new.
                 viewModel.back()
             } else if (pageAnimatesBack) {
                 finishPageBack()
@@ -234,6 +264,10 @@ fun MusicApp(
         }
     }
     val backActive by remember { androidx.compose.runtime.derivedStateOf { effBack.value > 0f } }
+    // F-216: one back button, no swap. When the page a back lands on is itself a pushed page (it has a back button),
+    // the floating button simply stays where it is; only when it lands on a tab page (no button) does the button
+    // leave with the page. Decided while idle, so it stays fixed for the whole back move even though the route
+    // (and therefore "the page before") changes at its end.
     var keepBackButton by remember { mutableStateOf(false) }
     run {
         val remaining = view.stack.dropLast(1)
@@ -241,12 +275,16 @@ fun MusicApp(
         val prevIsPushed = view.stack.size > 1 && base != Route.Root
         if (committedFrom == null && !backActive) SideEffect { keepBackButton = prevIsPushed }
     }
+    // Bars stay COMPOSED all the time (no recreation when Now Playing closes, so no rebuild, no lost state); they are
+    // simply not placed (no drawing, no touches) while the player covers them.
     val barsPlaced by remember {
         androidx.compose.runtime.derivedStateOf { !(playerOpenNow && sheet.value < 0.7f) }
     }
     val playerLayerVisible by remember {
         androidx.compose.runtime.derivedStateOf { playerOpenNow || sheet.value < 1f }
     }
+    // The route says whether the player is open; this animates the sheet to match (button, mini tap, chevron).
+    // Drags and the back gesture write `sheet` directly and end by calling the route change themselves.
     LaunchedEffect(playerOpenNow) {
         when {
             motion.reduce -> sheet.snapTo(if (playerOpenNow) 0f else 1f)
@@ -254,6 +292,8 @@ fun MusicApp(
             else -> sheet.animateTo(1f, com.dopavin.ui.motion.MotionSpecs.slide(com.dopavin.ui.motion.MotionTokens.PlayerExitMs))
         }
     }
+    // Drag the mini player up: the sheet follows the finger; on release it opens or falls back by position
+    // and fling velocity (carrying the finger's speed into the spring).
     val screenHPx = with(LocalDensity.current) { androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp.toPx() }
     val onSheetDrag: (Float) -> Unit = { dy ->
         backScope.launch { sheet.snapTo((sheet.value + dy / screenHPx).coerceIn(0f, 1f)) }
@@ -275,6 +315,10 @@ fun MusicApp(
             }
         }
     }
+    // Swipe down inside Now Playing: the finger writes the same `sheet` value as Predictive Back. Releasing past
+    // the dismiss distance finishes the close from where the finger let go and only then changes the route;
+    // otherwise the sheet springs back open. One release job at a time; a new drag interrupts it (snapTo cancels
+    // the running animation, which also cancels the pending route change).
     val playerReleaseJob = remember { arrayOfNulls<kotlinx.coroutines.Job>(1) }
     val dismissPx = with(LocalDensity.current) { com.dopavin.ui.motion.MotionTokens.SheetDismissDp.dp.toPx() }
     val onPlayerDrag: (Float) -> Unit = { dy ->
@@ -297,6 +341,9 @@ fun MusicApp(
         playerReleaseJob[0]?.cancel()
         playerReleaseJob[0] = backScope.launch { sheet.animateTo(0f, com.dopavin.ui.motion.MotionSpecs.cancelSpring()) }
     }
+    // When the cover has landed in the mini player (sheet fully closed after the player was open) it settles with a
+    // spring: it starts at its normal size, is kicked a little past it and rings back. The bars themselves are never
+    // recreated: they stay composed under the player and are only hidden/faded (see `barsPlaced`).
     val playerWasOpen = remember { booleanArrayOf(false) }
     LaunchedEffect(playerOpenNow) { if (playerOpenNow) playerWasOpen[0] = true }
     LaunchedEffect(Unit) {
@@ -314,12 +361,17 @@ fun MusicApp(
             }
         }
     }
+
     val route = view.route
+    // Now Playing and the queue are layers on top of the screen you came from. That screen stays
+    // composed underneath, so dragging the player down reveals it instead of a blank background.
     val baseRoute = view.stack.lastOrNull { it != Route.NowPlaying && it != Route.Queue } ?: Route.Root
     val playerOpen = view.stack.any { it == Route.NowPlaying }
     val browsing = !imeOpen &&
         (baseRoute == Route.Root || baseRoute is Route.Album || baseRoute is Route.Artist)
     val miniVisible = browsing && playback.hasItem
+    // Liquid glass: one ambient backdrop behind everything (for in-screen controls) and one that also
+    // contains the screens (for the floating nav, mini player and sheets above them).
     val reduceMotion = remember {
         runCatching {
             android.provider.Settings.Global.getFloat(
@@ -330,6 +382,7 @@ fun MusicApp(
         }.getOrDefault(false)
     }
     val glassStyle = settings.toGlassStyle(reduceMotion)
+    // Glass settings -> the glass nav bar's config (blur dp, lens 0..1, ...).
     val glassConfig = GlassEffectConfig(
         globalEnabled = glassStyle.enabled,
         vibrancy = ((settings.glassSaturation / 100f) - 1f) / 0.5f,
@@ -345,11 +398,13 @@ fun MusicApp(
     val navGlass = glassConfig.isEnabledFor(GlassComponent.NAV_BAR) && isGlassAllowed()
     val tabScroll = rememberFloatingTabBarScrollConnection()
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    // Landscape: the floating glass bar is reused when glass is on; the rail is the glass-off layout.
     val railMode = !navGlass && configuration.screenWidthDp >= 600 && configuration.screenWidthDp > configuration.screenHeightDp
     val railInset = if (railMode && browsing) com.dopavin.ui.components.NavRailInset else 0.dp
     val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val bottomInset = (if (browsing && !railMode) Dimens.bottomNavHeight + Dimens.sm + navInset else 0.dp) +
         (if (browsing && playback.hasItem) Dimens.miniPlayerHeight + Dimens.md else 0.dp)
+
     val songTint = com.dopavin.ui.components.rememberArtworkTint(currentSong?.artworkUri)
     val ambientWash by androidx.compose.animation.animateColorAsState(
         targetValue = songTint ?: colors.accentEnd,
@@ -359,17 +414,22 @@ fun MusicApp(
     val ambientBackdrop = rememberLayerBackdrop()
     val contentBackdrop = rememberLayerBackdrop()
     val overlayBackdrop = rememberCombinedBackdrop(ambientBackdrop, contentBackdrop)
+
+    // Neighbours for the swipe preview. With shuffle on, queue order is not play order, so none.
     val previousSong = if (!playback.shuffle && playback.currentIndex > 0) {
-        playback.queue.getOrNull(playback.currentIndex - 1)?.mediaId?.toLongOrNull()?.let { groups.byId[it] }
+        playback.queue.getOrNull(playback.currentIndex - 1)?.let { q -> q.mediaId.toLongOrNull()?.let { id -> groups.byId[id] } ?: q.asPreviewSong() }
     } else {
         null
     }
     val nextSong = if (!playback.shuffle && playback.currentIndex >= 0) {
-        playback.queue.getOrNull(playback.currentIndex + 1)?.mediaId?.toLongOrNull()?.let { groups.byId[it] }
+        playback.queue.getOrNull(playback.currentIndex + 1)?.let { q -> q.mediaId.toLongOrNull()?.let { id -> groups.byId[id] } ?: q.asPreviewSong() }
     } else {
         null
     }
+
     var sleepDialog by remember { mutableStateOf(false) }
+    // The sheet moves by graphicsLayer, which never re-triggers a position callback: read the cover's place once
+    // the sheet has come to rest fully open.
     LaunchedEffect(artFlight) {
         androidx.compose.runtime.snapshotFlow { sheet.value <= 0f }.collect { open -> if (open) artFlight.settlePlayer() }
     }
@@ -407,6 +467,7 @@ fun MusicApp(
                 .padding(start = railInset)
                 .imePadding(),
         ) {
+            // Which page a back press lands on (same rule as the ViewModel's back()).
             val previousKey: Any? = when {
                 view.stack.size > 1 -> {
                     val remaining = view.stack.dropLast(1)
@@ -418,6 +479,7 @@ fun MusicApp(
             }
             val screenKey: Any = if (baseRoute == Route.Root) view.destination else baseRoute
             val renderScreen: @Composable (Any) -> Unit = { key ->
+                // Keeps list scroll positions while another screen is on top.
                 saveableStateHolder.SaveableStateProvider(key.toString()) {
                     when (key) {
                         is Destination -> RootContent(
@@ -440,6 +502,8 @@ fun MusicApp(
                     .fillMaxWidth(),
             ) {
                 CompositionLocalProvider(LocalBottomInset provides bottomInset) {
+                    // One keyed layer per page. A page keeps its composition when its role changes (underneath ->
+                    // current after a back), so finishing a back swaps nothing: no second copy, no reload, no flash.
                     var mainKey by remember { mutableStateOf(screenKey) }
                     var fadeFor by remember { mutableStateOf<Any?>(null) }
                     val fade = remember { androidx.compose.animation.core.Animatable(1f) }
@@ -447,6 +511,7 @@ fun MusicApp(
                     val instant = backSwap || motion.reduce
                     if (changing && instant) SideEffect { mainKey = screenKey }
                     LaunchedEffect(screenKey) {
+                        // Forward / tab change: cross-fade; the new page starts at 0 from its very first frame.
                         if (mainKey != screenKey && !instant) {
                             fadeFor = screenKey
                             fade.snapTo(0f)
@@ -488,6 +553,7 @@ fun MusicApp(
                                     .then(if (backActive) Modifier.ambientBackground(if (settings.ambience) ambientWash else null) else Modifier)
                                     .then(
                                         if (backActive) {
+                                            // A soft edge shadow on the side the page leaves from.
                                             Modifier.drawBehind {
                                                 val w = 24.dp.toPx()
                                                 val x = if (backDirection > 0f) -w else size.width
@@ -513,6 +579,7 @@ fun MusicApp(
                                     alpha = if (fadeFor == screenKey) fade.value else 0f
                                 }
                             }
+                            // Only the current page may own the floating back button.
                             CompositionLocalProvider(
                                 com.dopavin.ui.components.LocalFloatingBackEnabled provides
                                     (role == PageRole.Main || role == PageRole.Entering),
@@ -526,12 +593,14 @@ fun MusicApp(
                 }
             }
         }
+
         if (playerLayerVisible) {
             Box(
                 Modifier.graphicsLayer {
                     val o = sheet.value
                     if (o > 0f) {
                         translationY = o * size.height
+                        // Held: a faint shrink; released: it keeps going down at full size.
                         val s = com.dopavin.ui.motion.MotionMath.playerScale(o)
                         scaleX = s
                         scaleY = s
@@ -571,11 +640,15 @@ fun MusicApp(
         }
         }
         }
+        // Everything below floats over the screens and samples ambient + screen content.
         CompositionLocalProvider(
             LocalGlassBackdrop provides overlayBackdrop,
             LocalAppBackdrop provides overlayBackdrop,
         ) {
+            // Back button of pushed pages. It must live OUTSIDE the content layer it samples (inside it,
+            // the layer would contain itself and the renderer overflows its stack). Hidden under the player.
             if (!playerOpen) {
+                // The button travels with the page during the back gesture.
                 val pagePx = with(LocalDensity.current) { configuration.screenWidthDp.dp.toPx() }
                 com.dopavin.ui.components.FloatingBackLayer(
                     floatingBack,
@@ -583,7 +656,10 @@ fun MusicApp(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .graphicsLayer {
+                            // Stays put when the page before also has a back button; leaves with the page otherwise.
                             translationX = if (keepBackButton) 0f else backDirection * effBack.value * pagePx
+                            // The frame where the route has changed but the layer still holds the old page's button:
+                            // it must not show at rest on the tab page (that was the flash).
                             alpha = if (!keepBackButton && committedFrom != null && effBack.value == 0f) 0f else 1f
                         },
                 )
@@ -592,6 +668,7 @@ fun MusicApp(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
+                    // Bars fade out as the player rises and back in as it leaves (they never sit on top of it).
                     .placedWhen { barsPlaced }
                     .graphicsLayer { alpha = ((sheet.value - 0.7f) / 0.3f).coerceIn(0f, 1f) },
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -625,6 +702,7 @@ fun MusicApp(
                         },
                     )
                 } else {
+                    // Glass off (or landscape rail): the mini player floats on its own above the solid bar / rail.
                     androidx.compose.animation.AnimatedVisibility(
                         visible = miniVisible,
                         modifier = Modifier.padding(start = railInset),
@@ -652,6 +730,7 @@ fun MusicApp(
                     }
                 }
             }
+        // The cover flies between the mini player and Now Playing while the sheet moves.
         com.dopavin.ui.components.ArtworkFlightLayer(
             artFlight,
             currentSong?.artworkUri,
@@ -668,16 +747,30 @@ fun MusicApp(
             )
         }
         if (route == Route.Queue) {
+            // Online songs are not in the library map; the queue also needs their artwork.
             val queueLookup = remember(playback.queue, groups.byId) { groups.byId + viewModel.onlineSongsById() }
             QueueSheet(playback, queueLookup, liked, queueOrigins, viewModel)
         }
+        // F-109: the one bottom sheet for every "more options" menu, above the player and the queue.
         ActionSheetLayer(sheetHost)
         detailSong?.let { SongDetailsDialog(it, viewModel) }
         if (sleepDialog) {
             com.dopavin.ui.components.SleepDialog(sleep, viewModel, onDismiss = { sleepDialog = false })
         }
+        // A newer release was found by the automatic check. Not over the first-run onboarding.
+        if (updateDialog && !onboarding && update.status == com.dopavin.data.UpdateStatus.Available && update.release != null) {
+            com.dopavin.ui.screens.UpdateDialog(update, viewModel)
+        }
         com.dopavin.ui.components.DialogLayer(dialogHost)
         }
+        // First run only: the onboarding covers the whole app until it is finished or skipped.
+        if (onboarding) {
+            com.dopavin.ui.screens.OnboardingScreen(
+                artists = homeOnline.welcomeArtists,
+                onFinish = viewModel::finishWelcome,
+            )
+        }
+        // Transient notices (iOS-style banner). Inside the glass scope so Liquid Glass reaches it.
         CompositionLocalProvider(LocalGlassBackdrop provides overlayBackdrop) {
             com.dopavin.ui.components.ToastHost(
                 state = toast,
@@ -695,6 +788,7 @@ fun MusicApp(
     }
     }
 }
+
 @Composable
 private fun RootContent(
     destination: Destination,
@@ -718,6 +812,7 @@ private fun RootContent(
         Destination.Library -> com.dopavin.ui.screens.LibraryHubScreen(actions)
     }
 }
+
 @Composable
 private fun RouteContent(
     route: Route,
@@ -745,7 +840,7 @@ private fun RouteContent(
     actions: MusicActions,
 ) {
     when (route) {
-        Route.Root, Route.NowPlaying, Route.Queue -> Unit
+        Route.Root, Route.NowPlaying, Route.Queue -> Unit // layers handled by MusicApp
         is Route.Album -> CollectionScreen(
             collection = albumCollection(groups.albumsByKey[route.key]),
             playback = playback,
@@ -806,6 +901,7 @@ private fun RouteContent(
         Route.Driving -> com.dopavin.ui.screens.DrivingScreen(playback, currentSong, lyrics, settings.lyricsOnline, actions)
     }
 }
+
 @Composable
 private fun albumCollection(album: Album?): CollectionUi? {
     if (album == null) return null
@@ -824,6 +920,7 @@ private fun albumCollection(album: Album?): CollectionUi? {
         isAlbum = true,
     )
 }
+
 @Composable
 private fun artistCollection(artist: Artist?): CollectionUi? {
     if (artist == null) return null
@@ -840,11 +937,30 @@ private fun artistCollection(artist: Artist?): CollectionUi? {
         isAlbum = false,
     )
 }
+
+/** What a page layer is doing right now (see the layered page host in [MusicApp]). */
 private enum class PageRole { Under, Main, Leaving, Entering }
+
+/** Keeps the content composed but places it (draws, hit-tests) only while [placed] is true. */
 private fun Modifier.placedWhen(placed: () -> Boolean): Modifier = this.layout { measurable, constraints ->
     val p = measurable.measure(constraints)
     layout(p.width, p.height) { if (placed()) p.place(0, 0) }
 }
+
+/** F-197: stands in for the system haptics while "Haptic feedback" is off. */
 private object NoHaptics : androidx.compose.ui.hapticfeedback.HapticFeedback {
     override fun performHapticFeedback(hapticFeedbackType: androidx.compose.ui.hapticfeedback.HapticFeedbackType) = Unit
+}
+
+/**
+ * A light Song for the swipe preview of a neighbour that is not in the library map (a streamed pick):
+ * the cover comes from the queue row's own metadata, so it no longer shows a blank card.
+ */
+private fun com.dopavin.playback.QueueItem.asPreviewSong(): com.dopavin.data.Song? {
+    val id = mediaId.toLongOrNull() ?: return null
+    return com.dopavin.data.Song(
+        id = id, title = title, artist = artist, album = "",
+        albumKey = com.dopavin.data.UNKNOWN_ALBUM_KEY, durationMs = durationMs,
+        dateAdded = 0L, track = 0, isOnline = true, thumbUri = artworkUri,
+    )
 }

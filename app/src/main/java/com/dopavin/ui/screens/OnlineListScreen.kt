@@ -1,4 +1,5 @@
 package com.dopavin.ui.screens
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import com.dopavin.ui.components.TonalButton
@@ -33,6 +34,11 @@ import com.dopavin.ui.components.RetryHint
 import com.dopavin.ui.components.SongRow
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
+
+/**
+ * S-10. One Home shelf opened in full — a category or an artist's YouTube songs, played top-down.
+ * Quiet Loading / Unreachable lines like the Search screen; no tints, no tabs, no local mixing.
+ */
 @Composable
 fun OnlineListScreen(
     route: Route.OnlineList,
@@ -127,9 +133,11 @@ fun OnlineListScreen(
                 }
             }
         }
+        // Fixed over the page; the root draws it as real glass.
         FloatingBackButton(actions::back)
     }
 }
+
 @Composable
 private fun OnlineListHint(text: String) {
     AppText(

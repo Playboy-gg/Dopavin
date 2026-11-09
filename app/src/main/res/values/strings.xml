@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Dopavin</string>
+
+    <!-- Library -->
     <string name="title_library">Downloads</string>
     <string name="tab_songs">Songs</string>
     <string name="tab_artists">Artists</string>
@@ -44,6 +46,7 @@
     <string name="row_description">%1$s by %2$s, %3$s</string>
     <string name="state_now_playing">Now playing</string>
     <string name="state_paused">Paused</string>
+
     <plurals name="songs_count">
         <item quantity="one">%d song</item>
         <item quantity="other">%d songs</item>
@@ -52,6 +55,8 @@
         <item quantity="one">%d album</item>
         <item quantity="other">%d albums</item>
     </plurals>
+
+    <!-- Navigation, Home, Search -->
     <string name="nav_home">Home</string>
     <string name="nav_search">Search</string>
     <string name="nav_library">Downloads</string>
@@ -111,23 +116,32 @@
     <string name="search_popular_artists">Popular artists</string>
     <string name="search_empty_body">Check the spelling, or try an artist, album or song name.</string>
     <string name="state_selected">Selected</string>
+
+    <!-- Sort and menus -->
     <string name="sort_title">Title</string>
     <string name="sort_artist">Artist</string>
     <string name="sort_recent">Recently added</string>
     <string name="menu_play_next">Play next</string>
     <string name="menu_add_queue">Add to queue</string>
+
+
+    <!-- States -->
     <string name="loading_library">Loading your music…</string>
     <string name="search_empty_title">No results for “%1$s”</string>
     <string name="search_clear">Clear search</string>
     <string name="error_retry">Try again</string>
     <string name="collection_unavailable">This item is no longer available</string>
     <string name="back_to_library">Back to library</string>
+
+    <!-- Collection -->
     <string name="button_play">Play</string>
     <string name="button_shuffle">Shuffle</string>
     <string name="cd_play_album">Play album</string>
     <string name="cd_play_all">Play all songs</string>
     <string name="album_subtitle">%1$s · %2$s · %3$s</string>
     <string name="artist_subtitle">%1$s · %2$s</string>
+
+    <!-- Now playing and queue -->
     <string name="now_playing_title">Now playing</string>
     <string name="queue_title">Queue</string>
     <string name="seek_label">Seek</string>
@@ -136,10 +150,14 @@
     <string name="queue_row_description">%1$s, %2$s, position %3$d of %4$d</string>
     <string name="mini_playing">Now playing: %1$s by %2$s. Open player.</string>
     <string name="mini_paused">Paused: %1$s by %2$s. Open player.</string>
+
+    <!-- Snackbar messages -->
     <string name="msg_play_next">Will play next</string>
     <string name="msg_added">Added to queue</string>
     <string name="msg_song_failed">Couldn\'t play “%1$s”. Skipped.</string>
     <string name="msg_all_failed">None of these songs could be played.</string>
+
+    <!-- Content descriptions (icon-only controls) -->
     <string name="cd_play">Play</string>
     <string name="cd_pause">Pause</string>
     <string name="cd_next">Next song</string>
@@ -158,6 +176,9 @@
     <string name="cd_more_options">More options for %1$s</string>
     <string name="cd_sort">Sort songs</string>
     <string name="cd_close_player">Close player</string>
+    <string name="cd_kill_app">Stop playback and close the app</string>
+
+    <!-- Sheets, sound, sleep -->
     <string name="cd_close_sheet">Close</string>
     <string name="cd_settings">Settings</string>
     <string name="cd_like">Add to liked songs</string>
@@ -184,6 +205,8 @@
     <string name="sleep_end_of_song">End of this song</string>
     <string name="sleep_end_short">This song</string>
     <string name="sleep_turn_off">Turn off timer</string>
+
+    <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="theme_system">System</string>
     <string name="theme_dark">Dark</string>
@@ -194,6 +217,8 @@
     <string name="settings_skip_silence_body">Jumps over silent gaps inside songs.</string>
     <string name="settings_about_body">Dopavin plays the music you download inside the app. No account, no sign-in.</string>
     <string name="settings_licences">Plus Jakarta Sans (SIL Open Font License 1.1). Material Icons, AndroidX and Media3, Backdrop and Capsule by Kyant0 (Apache License 2.0). Full licence texts ship in docs/licenses.</string>
+
+    <!-- F-98: universal song actions (menu + details) -->
     <string name="menu_play_now">Play now</string>
     <string name="menu_fav_add">Add to Favorites</string>
     <string name="menu_fav_remove">Remove from Favorites</string>
@@ -201,6 +226,8 @@
     <string name="menu_share">Share song</string>
     <string name="menu_remove_playlist">Remove from this playlist</string>
     <string name="cd_select_song">Select %1$s for a multi-selection action</string>
+
+    <!-- F-99: song details screen -->
     <string name="details_title">Song details</string>
     <string name="details_source">Source</string>
     <string name="details_source_online">YouTube Music (streaming)</string>
@@ -209,6 +236,8 @@
     <string name="details_added">Added to device</string>
     <string name="details_unknown">Unknown</string>
     <string name="details_stream_only">Streaming only — download it to keep it inside Dopavin and play it offline.</string>
+
+    <!-- F-100: multi-select (Library song list) -->
     <string name="sel_select_all">Select all</string>
     <string name="sel_cancel">Cancel</string>
     <string name="sel_add_queue">Add %1$d to queue</string>
@@ -219,6 +248,8 @@
     <string name="sel_hint">Long-press a song to select many</string>
     <string name="msg_selected_added">%1$d songs added to the queue.</string>
     <string name="msg_selected_liked">%1$d songs added to Favorites.</string>
+
+    <!-- F-102: queue upgrade -->
     <string name="queue_save">Save queue as playlist</string>
     <string name="queue_clear">Clear upcoming</string>
     <string name="queue_clear_body">Removes every song after the one playing now. The song playing keeps playing.</string>
@@ -229,6 +260,8 @@
     <string name="queue_move_down">Move down</string>
     <string name="queue_auto_chip">Auto</string>
     <string name="msg_playlist_saved">Queue saved as "%1$s".</string>
+
+    <!-- F-103: playlists -->
     <string name="pl_title">Playlists</string>
     <string name="pl_empty">No playlists yet. Long-press a song to start one, or save the queue.</string>
     <string name="pl_count">%1$d songs</string>
@@ -243,6 +276,8 @@
     <string name="msg_song_removed_playlist">Removed from playlist.</string>
     <string name="play_shuffle">Shuffle</string>
     <string name="play_play">Play</string>
+
+    <!-- F-104: storage dashboard (honest) -->
     <string name="storage_title">Storage</string>
     <string name="storage_stores">App data (history and playlists)</string>
     <string name="storage_clear_lyrics">Clear lyrics cache</string>
@@ -251,6 +286,9 @@
     <string name="storage_free">Free space on device</string>
     <string name="storage_online_note">Songs you have not downloaded stream live. Downloads are stored inside Dopavin; use “Save to device” on a song to keep a copy in a folder you choose.</string>
     <string name="size_unknown_mib" tools:ignore="UnusedResources">Unknown</string>
+
+
+    <!-- F-106: settings redesign -->
     <string name="settings_search_hint">Search settings</string>
     <string name="settings_group_playback">Playback</string>
     <string name="settings_group_audio">Audio &amp; effects</string>
@@ -261,6 +299,8 @@
     <string name="settings_restore_body">Resets every setting to the Dopavin defaults. Likes, playlists and your downloads are not touched.</string>
     <string name="settings_restore_done">Default settings restored.</string>
     <string name="settings_gapless_note">Playback is gapless by default (Media3 pipeline). Crossfade is not available: mixing two audio graphs is not safe for background reliability.</string>
+
+    <!-- F-107: Now Playing more controls -->
     <string name="more_title">More controls</string>
     <string name="more_output">Audio output</string>
     <string name="more_output_settings">Open output settings</string>
@@ -272,6 +312,8 @@
     <string name="more_silence">Skip silence</string>
     <string name="more_saved_status">Offline status</string>
     <string name="more_offline_stream">Streaming — needs the internet until you download it.</string>
+
+    <!-- F-108..F-116: downloads-first Dopavin -->
     <string name="song_subtitle_dl">%1$s · %2$s</string>
     <string name="home_downloaded">Downloaded</string>
     <string name="dl_empty_title">Nothing downloaded yet</string>
@@ -303,11 +345,15 @@
     <string name="details_format">Format</string>
     <string name="storage_downloads">Downloads</string>
     <string name="storage_downloads_size">%1$d songs, %2$s</string>
+
+    <!-- Download service notification -->
     <string name="download_channel_name">Downloads</string>
     <string name="download_notification_many">Downloading %1$d songs</string>
     <string name="download_notification_one">Downloading</string>
     <string name="download_notification_text">Dopavin is saving music for offline play</string>
     <string name="download_cancel_all">Cancel all</string>
+
+    <!-- F-114: settings hub -->
     <string name="settings_group_downloads">Downloads</string>
     <string name="settings_group_streaming">Streaming &amp; lyrics</string>
     <string name="settings_sum_playback">Silence, pitch, headphones, sleep fade, autoplay</string>
@@ -345,6 +391,8 @@
     <string name="quality_high_hint">Best available, usually around 128–160 kbps or more.</string>
     <string name="quality_standard_hint">Up to about 128 kbps. A good balance.</string>
     <string name="quality_saver_hint">Up to about 64 kbps. Smallest files and least data.</string>
+
+    <!-- F-117..F-119: Home redesign, landscape, faster start -->
     <string name="home_trending">Trending now</string>
     <string name="home_subtitle_empty">Find something to listen to</string>
     <string name="quick_pick_description">%1$s by %2$s. Plays now.</string>
@@ -352,6 +400,8 @@
     <string name="hero_discover_title">Find your first song</string>
     <string name="hero_discover_body">Search, then tap Download to keep it offline.</string>
     <string name="hero_discover_button">Search music</string>
+
+    <!-- Liquid glass -->
     <string name="settings_group_glass">Glass &amp; style</string>
     <string name="settings_sum_glass">Liquid-glass look: blur, lens, tint</string>
     <string name="settings_glass_enable">Liquid glass</string>
@@ -376,6 +426,8 @@
     <string name="settings_glass_reset">Reset glass</string>
     <string name="settings_glass_preview">Preview</string>
     <string name="settings_glass_credit">Glass effects use the Backdrop and Capsule libraries by Kyant0 (Apache License 2.0).</string>
+
+    <!-- Download limit, backup, resume -->
     <string name="settings_download_limit">Download storage limit</string>
     <string name="settings_download_limit_body">When downloads grow past the limit, the oldest ones are removed automatically. The song that just finished is always kept.</string>
     <string name="limit_none">No limit</string>

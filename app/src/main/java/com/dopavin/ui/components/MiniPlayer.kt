@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -49,6 +50,12 @@ import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+
+/**
+ * C-01. Floating card above the bottom navigation, tinted with the artwork colour.
+ * Tap the body to open Now Playing; swipe sideways to skip; play/pause and next are separate 48dp-class
+ * targets. The progress line at the bottom is decorative.
+ */
 @Composable
 fun MiniPlayer(
     playback: PlaybackUi,
@@ -59,15 +66,21 @@ fun MiniPlayer(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Inside the nav bar: the bar supplies the glass / shape through [modifier]; no own card chrome. */
     bare: Boolean = false,
+    /** Collapsed form (nav bar scrolled away): artwork + play/pause only. */
     compact: Boolean = false,
+    /** Vertical offset in px while it drops in after Now Playing closes (0 = rest, negative = above). Draw phase. */
     drop: () -> Float = { 0f },
+    /** Dragging the card up opens Now Playing: finger movement in px (negative = up), then release velocity px/s. */
     onSheetDrag: (Float) -> Unit = {},
     onSheetRelease: (Float) -> Unit = {},
 ) {
     val colors = AppTheme.colors
     val type = AppTheme.type
     val motion = AppTheme.motion
+
+    // Position is polled here, so only this composable recomposes twice a second.
     var positionMs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(playback.mediaId, playback.isPlaying) {
         positionMs = position()
@@ -78,6 +91,7 @@ fun MiniPlayer(
             }
         }
     }
+
     val tint = rememberArtworkTint(song?.artworkUri)
     val base = colors.surfaceHigh
     val background by animateColorAsState(
@@ -85,6 +99,7 @@ fun MiniPlayer(
         animationSpec = tween(motion.ambient),
         label = "miniTint",
     )
+
     val duration = if (playback.durationMs > 0L) playback.durationMs else song?.durationMs ?: 0L
     val progress = if (duration > 0L) (positionMs.toFloat() / duration).coerceIn(0f, 1f) else 0f
     val description = stringResource(
@@ -100,6 +115,7 @@ fun MiniPlayer(
     val offsetX = remember { Animatable(0f) }
     val travelPx = with(density) { 160.dp.toPx() }
     val thresholdPx = with(density) { 56.dp.toPx() }
+    // Rubber-band stretch toward the finger while swiping to change song: -1..1 (sign = direction).
     val latestSheetDrag by androidx.compose.runtime.rememberUpdatedState(onSheetDrag)
     val latestSheetRelease by androidx.compose.runtime.rememberUpdatedState(onSheetRelease)
     val sheetDrag = androidx.compose.foundation.gestures.rememberDraggableState { latestSheetDrag(it) }
@@ -111,6 +127,7 @@ fun MiniPlayer(
     val flight = LocalArtworkFlight.current
     val stretch = remember { Animatable(0f) }
     val stretchSpring = com.dopavin.ui.motion.MotionSpecs.stretchSpring<Float>()
+
     if (compact) {
         Row(
             modifier
@@ -142,10 +159,13 @@ fun MiniPlayer(
         }
         return
     }
+
     Box(
         Modifier
             .then(sheetDragModifier)
             .graphicsLayer {
+                // Expands toward the finger: the edge opposite the drag stays put, the card grows ~4.5% sideways
+                // and gets a hair thinner, like a stretched liquid. Reduce Motion: no stretch.
                 val d = drop()
                 translationY = d
                 alpha = (1f + d / (com.dopavin.ui.motion.MotionTokens.MiniDropDp * this.density)).coerceIn(0f, 1f)
@@ -171,6 +191,7 @@ fun MiniPlayer(
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
+                    // Gestures stay on the fixed outer layer; only the content below is moved.
                     .pointerInput(playback.hasNext, playback.hasPrevious) {
                         detectHorizontalDragGestures(
                             onDragEnd = {

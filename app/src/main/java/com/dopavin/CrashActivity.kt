@@ -1,4 +1,5 @@
 package com.dopavin
+
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -15,14 +16,21 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+
+/**
+ * Crash report screen. Plain Android views on purpose: it runs in its own process and must not depend
+ * on Compose, the theme store or anything else that may be what crashed.
+ */
 class CrashActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val report = runCatching { CrashReporter.pending(this) }.getOrNull() ?: "No report was saved."
+        // Shown now, so it is not shown again on the next start.
         runCatching { CrashReporter.clear(this) }
         try {
             buildScreen(report)
         } catch (t: Throwable) {
+            // The nice screen failed: show the report and this error as plain text, nothing else.
             val sw = java.io.StringWriter().also { t.printStackTrace(java.io.PrintWriter(it)) }
             setContentView(
                 ScrollView(this).apply {
@@ -37,11 +45,13 @@ class CrashActivity : Activity() {
             )
         }
     }
+
     private fun buildScreen(report: String) {
         runCatching {
             window.statusBarColor = BG
             window.navigationBarColor = BG
         }
+
         val density = resources.displayMetrics.density
         val pad = (16 * density).toInt()
         val root = LinearLayout(this).apply {
@@ -51,6 +61,7 @@ class CrashActivity : Activity() {
         }
         root.addView(label(getString(R.string.crash_title), 26f, Color.WHITE, bold = true))
         root.addView(label(getString(R.string.crash_body), 15f, 0xFFB8B8C0.toInt()).apply { setPadding(0, pad / 2, 0, pad) })
+
         val box = TextView(this).apply {
             text = report
             textSize = 11f
@@ -67,6 +78,7 @@ class CrashActivity : Activity() {
             ScrollView(this).apply { addView(box) },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f),
         )
+
         val row = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(0, pad, 0, 0) }
         row.addView(button(getString(R.string.crash_copy)) {
             val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
@@ -86,12 +98,14 @@ class CrashActivity : Activity() {
         root.addView(row)
         setContentView(root)
     }
+
     private fun label(text: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply {
         this.text = text
         textSize = size
         setTextColor(color)
         if (bold) typeface = Typeface.DEFAULT_BOLD
     }
+
     private fun button(text: String, accent: Boolean = false, onClick: () -> Unit) = Button(this).apply {
         this.text = text
         isAllCaps = false
@@ -104,8 +118,10 @@ class CrashActivity : Activity() {
             .apply { marginStart = 6; marginEnd = 6 }
         setOnClickListener { onClick() }
     }
+
     @Suppress("OVERRIDE_DEPRECATION")
     override fun onBackPressed() = finish()
+
     private companion object {
         val BG = 0xFF0B0B10.toInt()
     }

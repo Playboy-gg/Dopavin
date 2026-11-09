@@ -1,4 +1,5 @@
 package com.dopavin.ui.screens
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,7 +58,14 @@ import com.dopavin.ui.components.TonalButton
 import com.dopavin.ui.components.clickableScale
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
+
+/** Songs shown before the "More" button. */
 private const val PREVIEW_SONGS = 6
+
+/**
+ * F-133. One artist (YouTube channel): the whole picture as a full-width square, a Subscribe button,
+ * Play / Shuffle, then every song found and the albums as a row of cards.
+ */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun ArtistProfileScreen(
@@ -77,6 +85,8 @@ fun ArtistProfileScreen(
     ) {
         item(key = "hero") {
             Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
+                // The photo itself fades out (alpha mask), so its lower part melts into whatever the page
+                // really has behind it (ambient tint, solid canvas, light or dark) instead of ending on a painted edge.
                 ArtworkImage(
                     uri = state.avatar?.let(android.net.Uri::parse),
                     sizePx = ArtworkSize.Player,
@@ -103,6 +113,7 @@ fun ArtistProfileScreen(
                         .semantics { contentDescription = state.name },
                     seed = state.name,
                 )
+                // Name and the two actions sit on the photo; the buttons are liquid glass over it.
                 Column(
                     Modifier
                         .align(Alignment.BottomStart)
@@ -234,6 +245,7 @@ fun ArtistProfileScreen(
     FloatingBackButton(actions::back)
     }
 }
+
 @Composable
 private fun Hint(text: String) {
     AppText(

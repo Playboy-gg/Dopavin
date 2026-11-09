@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -14,8 +15,17 @@ import android.text.TextPaint
 import androidx.core.content.FileProvider
 import com.dopavin.R
 import java.io.File
+
+/** Colour scheme of a lyrics card. */
 enum class LyricsCardStyle { Dark, Light, Accent }
+
 const val LYRICS_CARD_MAX_LINES = 6
+
+/**
+ * Draws a shareable lyrics card (F-194): the picked lines in large bold text, then the song title and artist,
+ * with the cover in a rounded corner when one is available. Pure drawing, no Compose; the size is fixed
+ * (1080 wide, height follows the text) so the result is the same on every device.
+ */
 fun renderLyricsCard(
     lines: List<String>,
     title: String,
@@ -49,6 +59,7 @@ fun renderLyricsCard(
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     canvas.drawColor(bg)
+
     var y = pad.toFloat()
     if (cover != null) {
         val clip = Path().apply { addRoundRect(RectF(pad.toFloat(), y, (pad + coverSize).toFloat(), y + coverSize), 28f, 28f, Path.Direction.CW) }
@@ -63,6 +74,7 @@ fun renderLyricsCard(
     layout.draw(canvas)
     canvas.restore()
     y += layout.height + 72
+
     val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ink; textSize = 44f; typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
@@ -73,6 +85,8 @@ fun renderLyricsCard(
     canvas.drawText("Dopavin", pad.toFloat(), y + 158f, brand)
     return bitmap
 }
+
+/** Writes [bitmap] as a PNG into the app cache and opens the system share sheet for it. */
 fun shareLyricsCard(context: Context, bitmap: Bitmap): Boolean {
     return try {
         val dir = File(context.cacheDir, "cards").apply { mkdirs() }

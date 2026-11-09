@@ -1,27 +1,45 @@
 package com.dopavin.data
+
 import java.io.StringReader
+
+/** One word (or syllable) of a word-synced line. [spaceAfter] is false inside a split word. */
 data class LyricWord(val startMs: Long, val endMs: Long, val text: String, val spaceAfter: Boolean = true)
+
+/**
+ * One timed line of synced lyrics. [words] is filled when the provider has word timing (karaoke
+ * display); [endMs] is the end of the line when known, else -1.
+ */
 data class LyricLine(
     val timeMs: Long,
     val text: String,
     val words: List<LyricWord> = emptyList(),
     val endMs: Long = -1L,
 )
+
 enum class LyricsStatus { Idle, Loading, Found, NotFound, Failed, Disabled, Instrumental }
+
+/** What the lyrics sheet shows. [songId] guards against showing the previous song's lyrics. */
 data class LyricsUi(
     val songId: Long = -1L,
     val status: LyricsStatus = LyricsStatus.Idle,
     val synced: List<LyricLine> = emptyList(),
     val plain: String? = null,
+    /** Friendly cause when [status] is Failed, from strings.xml. */
     val error: String? = null,
+    /** Raw technical detail of the same failure ("HTTP 503"), so problems can be reported. */
     val errorDetail: String? = null,
+    /** Provider id that supplied these lyrics (see [LyricsProviders]), and the timing it carries. */
     val source: String? = null,
     val kind: LyricsKind? = null,
+    /** Per-song sync offset in ms: positive shows lines earlier. */
     val offsetMs: Long = 0L,
+    /** Provider choice that produced this result: "choose" (race) or a provider id. */
     val selection: String = LyricsProviders.CHOOSE,
 )
+
 private val TIMESTAMP = Regex("""\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?]""")
 private val WORD_TAG = Regex("""<(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?>""")
+
 private fun clockMs(min: String, sec: String, frac: String): Long {
     val ms = when (frac.length) {
         0 -> 0L
@@ -31,6 +49,13 @@ private fun clockMs(min: String, sec: String, frac: String): Long {
     }
     return min.toLong() * 60_000L + sec.toLong() * 1000L + ms
 }
+
+/**
+ * Parses LRC text. A line may carry several timestamps; metadata tags like [ar:...] are skipped.
+ * Enhanced LRC (`[00:12.00] <00:12.00> word <00:12.40> word`) keeps its word timing: the line then
+ * has [LyricLine.words], each word ending where the next begins (the last one at the next line).
+ * Standard LRC gives line timing only. Malformed stamps are ignored, never fabricated.
+ */
 fun parseLrc(text: String): List<LyricLine> {
     val lines = ArrayList<LyricLine>()
     for (raw in text.lineSequence()) {
@@ -64,6 +89,7 @@ fun parseLrc(text: String): List<LyricLine> {
         }
     }
     val sorted = lines.sortedBy { it.timeMs }
+    // Close open word ends and line ends with the next line's start.
     return sorted.mapIndexed { i, line ->
         val next = sorted.getOrNull(i + 1)?.timeMs ?: -1L
         if (line.words.isEmpty()) {
@@ -76,13 +102,24 @@ fun parseLrc(text: String): List<LyricLine> {
         }
     }
 }
+
+/** What kind of timing a lyrics text carries. */
 enum class LyricsKind { WordSynced, LineSynced, Plain }
+
 fun kindOf(lines: List<LyricLine>, plain: String?): LyricsKind? = when {
     lines.any { it.words.isNotEmpty() } -> LyricsKind.WordSynced
     lines.isNotEmpty() -> LyricsKind.LineSynced
     !plain.isNullOrBlank() -> LyricsKind.Plain
     else -> null
 }
+
+/**
+ * Parses the Better Lyrics provider's TTML (owner F-89, word timing F-131; SAX since F-141 so it also
+ * runs in JVM unit tests). Each `<p begin end>` is a line; `<span begin end>` inside it are words or
+ * syllables with their own timing, nested spans included. Whitespace between spans marks a word
+ * boundary (no whitespace = the next span continues the same word). Background-vocal spans
+ * (`role="x-bg"`) are skipped so they cannot disturb the main line. Broken XML gives an empty list.
+ */
 fun parseTtml(xml: String): List<LyricLine> = try {
     val factory = javax.xml.parsers.SAXParserFactory.newInstance()
     val handler = TtmlHandler()
@@ -91,6 +128,7 @@ fun parseTtml(xml: String): List<LyricLine> = try {
 } catch (e: Exception) {
     emptyList()
 }
+
 private class TtmlHandler : org.xml.sax.helpers.DefaultHandler() {
     val lines = ArrayList<LyricLine>()
     private var inParagraph = false
@@ -101,7 +139,9 @@ private class TtmlHandler : org.xml.sax.helpers.DefaultHandler() {
     private val spans = ArrayList<LongArray?>()
     private var spanText = StringBuilder()
     private var skipDepth = 0
+
     private fun local(qName: String) = qName.substringAfterLast(':')
+
     override fun startElement(uri: String?, localName: String?, qName: String, a: org.xml.sax.Attributes) {
         val name = local(qName)
         if (name.equals("p", ignoreCase = true)) {
@@ -128,6 +168,7 @@ private class TtmlHandler : org.xml.sax.helpers.DefaultHandler() {
             spanText = StringBuilder()
         }
     }
+
     override fun characters(ch: CharArray, start: Int, length: Int) {
         if (!inParagraph || skipDepth > 0) return
         val text = String(ch, start, length)
@@ -141,6 +182,7 @@ private class TtmlHandler : org.xml.sax.helpers.DefaultHandler() {
             plain.append(text)
         }
     }
+
     override fun endElement(uri: String?, localName: String?, qName: String) {
         val name = local(qName)
         if (inParagraph && name.equals("span", ignoreCase = true) && spans.isNotEmpty()) {
@@ -175,10 +217,13 @@ private class TtmlHandler : org.xml.sax.helpers.DefaultHandler() {
             }
         }
     }
+
     private companion object {
         val WS = Regex("\\s+")
     }
 }
+
+/** TTML clock value ("00:21.46", "0:00:21.46", "21.46", "21460ms", "21.4s") to ms; -1 when absent or unreadable. */
 internal fun ttmlClockMs(raw: String?): Long {
     if (raw.isNullOrBlank()) return -1
     val v = raw.trim()
@@ -196,16 +241,23 @@ internal fun ttmlClockMs(raw: String?): Long {
         -1
     }
 }
+
+/** How far a word has been sung at [positionMs]: 0 before it starts, 1 once it ended. A pure function of the playback clock, so seek, pause and speed changes need no special cases. */
 fun wordProgress(word: LyricWord, positionMs: Long): Float {
     val span = (word.endMs - word.startMs).coerceAtLeast(WORD_MIN_SPAN_MS)
     return ((positionMs - word.startMs).toFloat() / span).coerceIn(0f, 1f)
 }
+
+/** Index of the word being sung in [line] at [positionMs] (the last started one), or -1 before the line. */
 fun activeWordIndex(line: LyricLine, positionMs: Long): Int {
     var found = -1
     line.words.forEachIndexed { i, w -> if (w.startMs <= positionMs) found = i }
     return found
 }
+
 private const val WORD_MIN_SPAN_MS = 120L
+
+/** Index of the line being sung at [positionMs], or -1 before the first line. */
 fun currentLineIndex(lines: List<LyricLine>, positionMs: Long): Int {
     var lo = 0
     var hi = lines.size - 1

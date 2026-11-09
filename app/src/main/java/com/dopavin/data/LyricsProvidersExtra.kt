@@ -1,6 +1,9 @@
 package com.dopavin.data
+
 import java.util.Base64
 import kotlin.math.abs
+
+/** Sniffs a lyrics text: TTML xml, LRC (maybe enhanced) or plain. Never invents timing. */
 internal fun docFromText(source: String, text: String, confidence: Float, durationSec: Int): ProviderOutcome {
     val body = text.removePrefix("﻿").trim()
     if (body.isEmpty()) return ProviderOutcome.NotFound
@@ -15,7 +18,14 @@ internal fun docFromText(source: String, text: String, confidence: Float, durati
     if (body.startsWith("<")) return ProviderOutcome.InvalidResponse("unreadable ttml")
     return ProviderOutcome.Success(LyricsDoc(source, emptyList(), body, confidence * PLAIN_FACTOR))
 }
+
 private const val PLAIN_FACTOR = 0.8f
+
+/**
+ * LyricsPlus (a.k.a. YouLyPlus): community mirrors answering `v1/ttml/get` (word-timed TTML) and
+ * `v2/lyrics/get` (JSON with line and syllable times in ms). Mirrors are tried in order; at most
+ * [maxRequests] requests per song so a dead mirror cannot eat the race time budget.
+ */
 class LyricsPlusProvider(
     private val http: LyricsHttp,
     private val mirrors: List<String> = DEFAULT_MIRRORS,
@@ -24,7 +34,9 @@ class LyricsPlusProvider(
 ) : LyricsProvider {
     override val id = LyricsProviders.LYRICSPLUS
     override val capabilities = LyricsProviders.capabilities(id)
+
     override suspend fun fetch(query: LyricsQuery): ProviderOutcome = guarded {
+        // The service needs both title and artist.
         if (query.title.isBlank() || query.artist.isBlank()) return@guarded ProviderOutcome.NotFound
         val qs = buildString {
             append("?title=").append(enc(query.title)).append("&artist=").append(enc(query.artist))
@@ -58,6 +70,7 @@ class LyricsPlusProvider(
             else -> ProviderOutcome.NotFound
         }
     }
+
     internal fun fromTtml(query: LyricsQuery, body: String): ProviderOutcome {
         val raw = body.removePrefix("﻿").trim()
         val ttml = if (raw.startsWith("<")) raw else MiniJson.str(MiniJson.obj(MiniJson.parse(body))?.get("ttml")).orEmpty().trim()
@@ -67,6 +80,7 @@ class LyricsPlusProvider(
         if (!LyricsMatcher.timingFits(lines, query.durationSec)) return ProviderOutcome.InvalidResponse("timing")
         return ProviderOutcome.Success(LyricsDoc(id, lines, null, CONFIDENCE))
     }
+
     internal fun fromJson(query: LyricsQuery, body: String): ProviderOutcome {
         val json = MiniJson.obj(MiniJson.parse(body)) ?: return ProviderOutcome.InvalidResponse("not json")
         val items = MiniJson.list(json["lyrics"])?.mapNotNull { MiniJson.obj(it) }.orEmpty()
@@ -101,6 +115,7 @@ class LyricsPlusProvider(
         if (!LyricsMatcher.timingFits(lines, query.durationSec)) return ProviderOutcome.InvalidResponse("timing")
         return ProviderOutcome.Success(LyricsDoc(id, lines, null, CONFIDENCE))
     }
+
     companion object {
         const val CONFIDENCE = 0.75f
         val DEFAULT_MIRRORS = listOf(
@@ -111,6 +126,12 @@ class LyricsPlusProvider(
         )
     }
 }
+
+/**
+ * Unison (https://unison.boidu.dev, community lyrics with votes): `GET /lyrics?song&artist&album&duration`
+ * answers `{success, data{song, artist, lyrics, format, syncType}}`. The text is sniffed (TTML, LRC or
+ * plain) rather than trusting the `format` label, and the record's song/artist must match the request.
+ */
 class UnisonProvider(
     private val http: LyricsHttp,
     private val baseUrl: String = "https://unison.boidu.dev",
@@ -118,6 +139,7 @@ class UnisonProvider(
 ) : LyricsProvider {
     override val id = LyricsProviders.UNISON
     override val capabilities = LyricsProviders.capabilities(id)
+
     override suspend fun fetch(query: LyricsQuery): ProviderOutcome = guarded {
         if (query.title.isBlank() || query.artist.isBlank()) return@guarded ProviderOutcome.NotFound
         val url = buildString {
@@ -133,6 +155,7 @@ class UnisonProvider(
             else -> parse(query, reply.body)
         }
     }
+
     internal fun parse(query: LyricsQuery, body: String): ProviderOutcome {
         val json = MiniJson.obj(MiniJson.parse(body)) ?: return ProviderOutcome.InvalidResponse("not json")
         if (json["success"] != true) return ProviderOutcome.NotFound
@@ -143,6 +166,12 @@ class UnisonProvider(
         return docFromText(id, text, confidence, query.durationSec)
     }
 }
+
+/**
+ * KuGou (public lyrics endpoints used by the KuGou desktop client): search the song, pick hits whose
+ * length is within [DURATION_TOLERANCE_S] of the request, look up lyric candidates by hash, then
+ * download (base64 LRC). Line-synced only. Credit lines ("作词 : ...") at the head or tail are dropped.
+ */
 class KuGouProvider(
     private val http: LyricsHttp,
     private val timeoutMs: Int = 5_000,
@@ -150,6 +179,7 @@ class KuGouProvider(
 ) : LyricsProvider {
     override val id = LyricsProviders.KUGOU
     override val capabilities = LyricsProviders.capabilities(id)
+
     override suspend fun fetch(query: LyricsQuery): ProviderOutcome = guarded {
         if (query.title.isBlank()) return@guarded ProviderOutcome.NotFound
         val keyword = enc("${cleanTitle(query.title)} - ${cleanArtist(query.artist)}".trim().trimEnd('-').trim())
@@ -170,10 +200,12 @@ class KuGouProvider(
             val cand = candidate("hash=${enc(hash)}") ?: continue
             download(query, cand)?.let { return@guarded it }
         }
+        // Fallback: lyric search by keyword (+ duration in ms).
         val dur = if (query.durationSec > 0) "&duration=${query.durationSec * 1000}" else ""
         val cand = candidate("keyword=$keyword$dur")
         cand?.let { download(query, it) } ?: ProviderOutcome.NotFound
     }
+
     private suspend fun candidate(params: String): Pair<String, String>? {
         val r = http.get("https://lyrics.kugou.com/search?ver=1&man=yes&client=pc&$params", timeoutMs)
         if (r.code !in 200..299) return null
@@ -183,6 +215,7 @@ class KuGouProvider(
         val key = MiniJson.str(c["accesskey"]) ?: return null
         return id to key
     }
+
     private suspend fun download(query: LyricsQuery, cand: Pair<String, String>): ProviderOutcome? {
         val r = http.get(
             "https://lyrics.kugou.com/download?fmt=lrc&charset=utf8&client=pc&ver=1&id=${enc(cand.first)}&accesskey=${enc(cand.second)}",
@@ -191,6 +224,7 @@ class KuGouProvider(
         if (r.code !in 200..299) return null
         return decode(query, r.body)
     }
+
     internal fun decode(query: LyricsQuery, body: String): ProviderOutcome? {
         val content = MiniJson.str(MiniJson.obj(MiniJson.parse(body))?.get("content")) ?: return null
         val text = try {
@@ -203,6 +237,7 @@ class KuGouProvider(
         if (!LyricsMatcher.timingFits(lines, query.durationSec)) return ProviderOutcome.InvalidResponse("timing")
         return ProviderOutcome.Success(LyricsDoc(id, lines, null, CONFIDENCE))
     }
+
     internal fun trimCredits(text: String): String {
         val all = text.lines().filter { ACCEPTED.matches(it) }
         var head = 0
@@ -216,8 +251,10 @@ class KuGouProvider(
         }
         return rest.dropLast(tail).joinToString("\n")
     }
+
     internal fun cleanTitle(s: String) = s.replace(Regex("""\(.*\)|（.*）|「.*」|『.*』|<.*>|《.*》"""), "").trim()
     internal fun cleanArtist(s: String) = s.replace(", ", "、").replace(" & ", "、").replace(Regex("""\(.*\)|（.*）"""), "").trim()
+
     private companion object {
         const val CONFIDENCE = 0.55f
         const val DURATION_TOLERANCE_S = 8.0
@@ -226,12 +263,21 @@ class KuGouProvider(
         val BANNED = Regex(""".+].+[:：].+""")
     }
 }
+
+/**
+ * lrc.red / BiniLyrics: word-timed TTML found by recording. First the Bini index identifies the exact
+ * recording (it answers an ISRC and a lrc.red document address); when it does not know the song, the
+ * lrc.red search is used. Every candidate must pass [LyricsMatcher.score] (title, artist, version,
+ * length) and the document address must be a https lrc.red one, so a wrong edit or a foreign host is
+ * never accepted.
+ */
 class LrcRedProvider(
     private val http: LyricsHttp,
     private val timeoutMs: Int = 5_000,
 ) : LyricsProvider {
     override val id = LyricsProviders.LRCRED
     override val capabilities = LyricsProviders.capabilities(id)
+
     override suspend fun fetch(query: LyricsQuery): ProviderOutcome = guarded {
         if (query.title.isBlank() || query.artist.isBlank()) return@guarded ProviderOutcome.NotFound
         var outcome: ProviderOutcome = ProviderOutcome.NotFound
@@ -246,6 +292,7 @@ class LrcRedProvider(
         }
         outcome
     }
+
     private suspend fun biniDocument(q: LyricsQuery): String? {
         val url = buildString {
             append(BINI).append("/?track=").append(enc(q.title)).append("&artist=").append(enc(q.artist))
@@ -256,30 +303,38 @@ class LrcRedProvider(
         if (reply.code !in 200..299) return null
         return pickBini(q, reply.body)
     }
+
     private suspend fun searchDocument(q: LyricsQuery): String? {
         val reply = http.get("$LRC_RED/search.json?q=" + enc("${q.title} ${q.artist}".trim()), timeoutMs)
         if (reply.code !in 200..299) return null
         return pickSearch(q, reply.body)
     }
+
     companion object {
         private const val BINI = "https://lyrics-api.binimum.org"
         private const val LRC_RED = "https://lrc.red"
         private const val CONFIDENCE = 0.9f
         private const val DURATION_TOLERANCE_S = 3.0
         private val isrcShape = Regex("[A-Z]{2}[A-Z0-9]{3}\\d{7}")
+
         internal fun documentUrl(isrc: String?): String? {
             val v = isrc?.trim()?.uppercase() ?: return null
             return v.takeIf { isrcShape.matches(it) }?.let { "$LRC_RED/s/$it.ttml" }
         }
+
+        /** Only a https lrc.red address is followed. */
         internal fun safeLrcRed(url: String?): String? {
             val u = url?.trim() ?: return null
             return u.takeIf { it.startsWith("https://lrc.red/") || it.startsWith("https://www.lrc.red/") }
         }
+
         private fun fits(q: LyricsQuery, title: String?, artist: String?, duration: Double?): Boolean {
             if (LyricsMatcher.score(q, title, artist, duration) == null) return false
+            // Another edit (live / remix ...) of the same title is another recording.
             val wanted = TrackMatch.versions(q.rawTitle.ifBlank { q.title })
             return TrackMatch.versions(title.orEmpty()) == wanted
         }
+
         internal fun pickBini(q: LyricsQuery, body: String): String? {
             val results = MiniJson.list(MiniJson.obj(MiniJson.parse(body))?.get("results")) ?: return null
             for (r in results) {
@@ -290,6 +345,7 @@ class LrcRedProvider(
             }
             return null
         }
+
         internal fun pickSearch(q: LyricsQuery, body: String): String? {
             val hits = MiniJson.list(MiniJson.obj(MiniJson.parse(body))?.get("hits")) ?: return null
             var best: Pair<String, Double>? = null

@@ -1,7 +1,11 @@
 package com.dopavin.data
+
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+
+/** One recorded play of a song, local or online. Whatever identifies it is kept: an online entry
+ * carries [videoId], a local one the MediaStore [songId]; the other may be absent. */
 data class HistoryEntry(
     val title: String,
     val artist: String,
@@ -11,6 +15,7 @@ data class HistoryEntry(
     val thumbUri: String?,
     val at: Long,
 ) {
+    /** Rebuilds the playable Song from what was recorded (online rows need nothing else). */
     fun toSong(): Song = Song(
         id = songId,
         title = title,
@@ -25,13 +30,25 @@ data class HistoryEntry(
         thumbUri = thumbUri?.let { runCatching { android.net.Uri.parse(it) }.getOrNull() },
     )
 }
+
+/**
+ * What the user actually played (owner F-86, approved 2026-10-20). A tiny JSON list in
+ * SharedPreferences - the only local source of taste available without an account. The newest
+ * entries end the array; the whole thing is capped, so scans stay trivial. Main-thread reads are
+ * served from the memory mirror; writes go through apply().
+ */
 class HistoryStore(context: Context) {
+
     private val prefs = context.applicationContext
         .getSharedPreferences("history", Context.MODE_PRIVATE)
+
     private val entries = ArrayList<HistoryEntry>()
+
     init {
         synchronized(entries) { load() }
     }
+
+    /** Upserts [song]: the same identity closer than [GAP_MS] changes nothing; a later replay MOVES the row to the end. */
     fun record(song: Song, now: Long = System.currentTimeMillis()): Boolean {
         val title = song.title.trim()
         if (title.isBlank()) return false
@@ -60,6 +77,8 @@ class HistoryStore(context: Context) {
             changed
         }
     }
+
+    /** Artist names with at least one play, most-played first. Blank names are skipped. */
     fun topArtists(limit: Int): List<String> = synchronized(entries) {
         val counts = HashMap<String, Int>()
         for (e in entries) {
@@ -71,21 +90,30 @@ class HistoryStore(context: Context) {
             .sortedByDescending { it.value }
             .take(limit)
             .map { it.key }
+        // Display uses the casing of the most recent entry for that artist.
         best.map { key ->
             entries.last { it.artist.trim().lowercase() == key }.artist.trim()
         }.distinct()
     }
+
+    /** For each of the [limit] most-played artists, their newest played song (for name + artwork). */
     fun topArtistSongs(limit: Int): List<Song> = synchronized(entries) {
         topArtists(limit).mapNotNull { name ->
             entries.lastOrNull { it.artist.trim().equals(name, ignoreCase = true) }?.toSong()
         }
     }
+
+    /** The most recently played online song, or null before any online play. */
     fun lastOnlineSong(): Song? = synchronized(entries) {
         entries.filter { it.videoId != null }.maxByOrNull { it.at }?.toSong()
     }
+
+    /** The newest plays, newest first (owner F-97, the Home history shelf). */
     fun recent(limit: Int): List<Song> = synchronized(entries) {
         entries.sortedByDescending { it.at }.filter { it.videoId != null }.take(limit).map { it.toSong() }
     }
+
+    /** Wipes the log (reset personalization, owner spec §11). */
     fun clear() {
         synchronized(entries) {
             entries.clear()
@@ -93,8 +121,12 @@ class HistoryStore(context: Context) {
         }
         prefs.edit().remove(KEY_JSON).apply()
     }
+
+    /** Rises whenever something new was recorded; the Home driver re-runs on it. */
     fun version(): Long = synchronized(entries) { version }
+
     private var version = 0L
+
     private fun persist() {
         version++
         val json = JSONArray()
@@ -112,6 +144,7 @@ class HistoryStore(context: Context) {
         }
         prefs.edit().putString(KEY_JSON, json.toString()).apply()
     }
+
     private fun load() {
         val raw = prefs.getString(KEY_JSON, null) ?: return
         runCatching {
@@ -133,6 +166,7 @@ class HistoryStore(context: Context) {
             }
         }
     }
+
     private companion object {
         const val KEY_JSON = "plays"
         const val K_TITLE = "t"

@@ -1,5 +1,7 @@
 @file:OptIn(ExperimentalSharedTransitionApi::class)
+
 package com.dopavin.ui.glass.nav
+
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -47,15 +49,23 @@ import com.dopavin.ui.glass.floatingtabbar.LocalTabBarBackdropFrozen
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import androidx.compose.foundation.shape.RoundedCornerShape
+
 data class NavTab(
     val key: String,
     val label: String,
     @DrawableRes val icon: Int,
+    /** Shown as its own rounded tab beside the tab group (glass bar only). */
     val standalone: Boolean = false,
 )
+
 private val NavBarShape = RoundedCornerShape(percent = 50)
 private val NavBarMinTabWidth = 56.dp
 private const val TintedChromeAlpha = 0.88f
+
+/**
+ * Bottom chrome. With Liquid Glass on: the floating glass tab bar (draggable puck) with the mini
+ * player as its accessory (inline when the bar collapses on scroll). Only used with glass on. Built on the vendored FloatingTabBar.
+ */
 @Composable
 fun DopavinNavBar(
     tabs: List<NavTab>,
@@ -67,7 +77,8 @@ fun DopavinNavBar(
 ) {
     val glassConfig = LocalGlassEffectConfig.current
     val useGlass = glassConfig.isEnabledFor(GlassComponent.NAV_BAR) && isGlassAllowed()
-    if (!useGlass) return
+    if (!useGlass) return // MusicApp uses the solid bar + floating mini player instead.
+
     val colors = AppTheme.colors
     val tabTextColor by animateColorAsState(
         targetValue = glassConfig.textColor,
@@ -77,6 +88,7 @@ fun DopavinNavBar(
     val selectedContentColor = colors.accent
     val unselectedContentColor = tabTextColor.copy(alpha = 0.62f)
     val glassFrozen = LocalTabBarBackdropFrozen.current
+
     val tabBarContentModifier = Modifier.liquidGlass(
         config = glassConfig,
         shape = NavBarShape,
@@ -96,11 +108,13 @@ fun DopavinNavBar(
             .background(colors.surface.copy(alpha = TintedChromeAlpha), NavBarShape)
             .tintedRim(NavBarShape)
     }
+
     val haptics = LocalHapticFeedback.current
     val navigate: (NavTab) -> Unit = { tab ->
         if (tab.key != currentKey) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         onNavigate(tab)
     }
+
     val inlineAccessory: (@Composable SharedTransitionScope.(Modifier, AnimatedVisibilityScope) -> Unit)? =
         if (accessory != null) {
             { accessoryModifier, _ ->
@@ -117,6 +131,7 @@ fun DopavinNavBar(
         } else {
             null
         }
+
     val inks = tabs.associate { tab ->
         tab.key to animateColorAsState(
             if (tab.key == currentKey) selectedContentColor else unselectedContentColor,
@@ -124,6 +139,7 @@ fun DopavinNavBar(
             label = "tabInk",
         )
     }
+
     BoxWithConstraints(
         modifier
             .widthIn(max = 600.dp)
@@ -138,8 +154,11 @@ fun DopavinNavBar(
         } else {
             ((maxWidth - if (standaloneTab != null) 64.dp else 0.dp) / groupTabs.size).coerceIn(NavBarMinTabWidth, FloatingTabBarDefaults.TabWidth)
         }
+
+        // Remember the last group tab so the folded bar still shows it while Search (standalone) is active.
         var lastGroupKey by remember { mutableStateOf(groupTabs.firstOrNull()?.key) }
         if (groupTabs.any { it.key == currentKey } && lastGroupKey != currentKey) lastGroupKey = currentKey
+
         FloatingTabBar(
             inlineFallbackKey = lastGroupKey,
             selectedTabKey = currentKey,
@@ -184,7 +203,7 @@ fun DopavinNavBar(
                         )
                     },
                     onClick = { navigate(tab) },
-                    indication = null,
+                    indication = null, // no grey ripple; the lens + accent colour are the feedback
                 )
             }
             if (standaloneTab != null) {
@@ -206,6 +225,8 @@ fun DopavinNavBar(
         }
     }
 }
+
+/** Hairline edge of a tinted (non-glass) surface, lighter at the top like the glass rim. */
 @Composable
 private fun Modifier.tintedRim(shape: Shape): Modifier {
     val colors = AppTheme.colors

@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,6 +41,12 @@ import com.dopavin.ui.glass.backdrop.effects.colorControls
 import com.dopavin.ui.glass.backdrop.effects.lens
 import com.dopavin.ui.glass.backdrop.highlight.Highlight
 import com.dopavin.ui.theme.AppTheme
+
+/**
+ * Sleep timer as a liquid-glass dialog (look from the supplied Kyant0 dialog sample, fixed values -
+ * not user-customisable). Drawn in the overlay layer so it blurs the player behind it. Without glass
+ * it is a plain solid card.
+ */
 @Composable
 fun SleepDialog(sleep: SleepState, actions: MusicActions, onDismiss: () -> Unit) {
     val colors = AppTheme.colors
@@ -51,7 +58,9 @@ fun SleepDialog(sleep: SleepState, actions: MusicActions, onDismiss: () -> Unit)
     val backdrop = LocalGlassBackdrop.current
     val glassOn = LocalGlassStyle.current.enabled && backdrop != null
     val shape = RoundedCornerShape(48.dp)
+
     BackHandler(onBack = onDismiss)
+
     val noRipple = remember { MutableInteractionSource() }
     Box(
         Modifier
@@ -82,6 +91,7 @@ fun SleepDialog(sleep: SleepState, actions: MusicActions, onDismiss: () -> Unit)
                     },
                 )
                 .fillMaxWidth()
+                // Taps inside the card must not reach the dismiss scrim.
                 .clickable(interactionSource = noRipple, indication = null, onClick = {}),
         ) {
             BasicText(
@@ -156,6 +166,7 @@ fun SleepDialog(sleep: SleepState, actions: MusicActions, onDismiss: () -> Unit)
         }
     }
 }
+
 @Composable
 private fun GlassDialogButton(
     text: String,

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cat_contributors">Contributors</string>
+    <string name="settings_sum_contributors">The people behind Dopavin</string>
+    <string name="contributors_intro">Dopavin is open source. Tap a name to visit that person\'s GitHub profile.</string>
+    <string name="contributor_role_maintainer">Creator and maintainer</string>
+    <string name="contributor_role_designer">UI/UX designer</string>
+    <string name="contributor_role_contributor">Contributor</string>
+    <string name="contributors_all">All contributors on GitHub</string>
+    <string name="contributors_all_body">Everyone who has contributed to the project</string>
+    <string name="contributors_join">Want to contribute?</string>
+    <string name="contributors_join_body">Open the project on GitHub</string>
+    <string name="cd_open_github">Open %1$s on GitHub</string>
+</resources>

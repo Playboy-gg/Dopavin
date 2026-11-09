@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- windowBackground equals the light canvas token so there is no flash before Compose draws. -->
     <style name="Theme.Dopavin" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">#FAF7F5</item>
         <item name="android:statusBarColor">@android:color/transparent</item>

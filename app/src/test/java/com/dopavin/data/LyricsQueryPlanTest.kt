@@ -111,4 +111,41 @@ class LyricsQueryPlanTest {
         assertTrue(live != null && studio != null && live < studio)
         assertFalse(LyricsMatcher.versionTags("Plain Song").isNotEmpty())
     }
+
+    @Test fun cleanedQueryIsNotDroppedWhenOnlyBracketsDiffer() {
+        // "Song (Official Video)" and "Song" normalise alike, but they are different search texts.
+        val pairs = LyricsQueryPlan.build(meta("Tum Hi Ho (Official Video)", "Arijit Singh")).map { it.title to it.artist }
+        assertEquals("Tum Hi Ho (Official Video)" to "Arijit Singh", pairs[0])
+        assertEquals("Tum Hi Ho" to "Arijit Singh", pairs[1])
+        assertEquals("Tum Hi Ho" to "", pairs[2])
+    }
+
+    @Test fun plainTitleGivesNoDuplicateQuery() {
+        val pairs = LyricsQueryPlan.build(meta("PARIS", "Guru Randhawa")).map { it.title to it.artist }
+        assertEquals(listOf("PARIS" to "Guru Randhawa", "PARIS" to ""), pairs)
+    }
+
+    @Test fun singerAtTheEndOfTheTitleIsTriedWhenTheUploaderIsALabel() {
+        val plan = LyricsQueryPlan.build(meta("CALIFORNIA LOVE Cheema Y", "Brown Town Music"))
+        assertTrue(plan.any { it.title == "CALIFORNIA LOVE" && it.artist == "Cheema Y" })
+        assertTrue(plan.any { it.title == "CALIFORNIA LOVE" && it.artist.isBlank() && it.strict })
+        assertTrue(plan.size <= LyricsQueryPlan.MAX_QUERIES)
+    }
+
+    @Test fun aPersonAsUploaderDoesNotGetTrailingWordGuesses() {
+        val plan = LyricsQueryPlan.build(meta("Tera Ban Jaunga", "Akhil Sachdeva"))
+        assertTrue(plan.none { it.title == "Tera Ban" })
+    }
+
+    @Test fun labelDetection() {
+        assertTrue(LyricsQueryPlan.looksLikeLabel("T-Series"))
+        assertTrue(LyricsQueryPlan.looksLikeLabel("Brown Town Music"))
+        assertFalse(LyricsQueryPlan.looksLikeLabel("Arijit Singh"))
+    }
+
+    @Test fun indicScriptWordsStayWholeWhenNormalised() {
+        // Vowel signs are marks, not letters: they used to turn every word into loose single letters.
+        assertEquals("\u0924\u0941\u092e \u0939\u0940 \u0939\u094b", LyricsMatcher.normalise("\u0924\u0941\u092e \u0939\u0940 \u0939\u094b (Lyrics)"))
+        assertEquals(3, LyricsMatcher.normalise("\u0a2e\u0a48\u0a28\u0a42\u0a70 \u0a2c\u0a23\u0a3f\u0a06\u0a02 \u0a24\u0a47\u0a30\u0a47").split(' ').size)
+    }
 }

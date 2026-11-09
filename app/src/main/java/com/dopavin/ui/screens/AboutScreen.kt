@@ -1,4 +1,5 @@
 package com.dopavin.ui.screens
+
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
@@ -43,7 +44,10 @@ import com.dopavin.ui.components.TonalButton
 import com.dopavin.ui.components.clickableScale
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
+
 private data class OpenSourceRepo(val name: String, val note: String, val url: String)
+
+/** Projects Dopavin is built on or uses; every address is the project's public repository. */
 private val OpenSourceRepos = listOf(
     OpenSourceRepo("NewPipe Extractor", "TeamNewPipe · GPL-3.0", "https://github.com/TeamNewPipe/NewPipeExtractor"),
     OpenSourceRepo("Backdrop (liquid glass)", "Kyant0 · Apache-2.0", "https://github.com/Kyant0/AndroidLiquidGlass"),
@@ -57,13 +61,20 @@ private val OpenSourceRepos = listOf(
     OpenSourceRepo("Kotlin", "JetBrains · Apache-2.0", "https://github.com/JetBrains/kotlin"),
     OpenSourceRepo("Kotlin coroutines", "JetBrains · Apache-2.0", "https://github.com/Kotlin/kotlinx.coroutines"),
 )
-private fun openUrl(context: android.content.Context, url: String, noBrowser: String) {
+
+internal fun openUrl(context: android.content.Context, url: String, noBrowser: String) {
     try {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     } catch (e: ActivityNotFoundException) {
         Toast.makeText(context, noBrowser, Toast.LENGTH_SHORT).show()
     }
 }
+
+/**
+ * About Dopavin: the real launcher artwork, name, tagline, the version from the installed package,
+ * a glass "View source code" button (only when `about_source_url` is configured), then licences,
+ * Privacy & data and Restore settings (confirmed first).
+ */
 @Composable
 fun AboutPage(actions: MusicActions, onOpenPrivacy: () -> Unit) {
     val colors = AppTheme.colors
@@ -76,10 +87,12 @@ fun AboutPage(actions: MusicActions, onOpenPrivacy: () -> Unit) {
     val noBrowser = stringResource(R.string.about_no_browser)
     var showLicences by remember { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf(false) }
+
     Column(
         Modifier.fillMaxWidth().padding(top = Dimens.lg),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        // The launcher icon's own layers (adaptive icons cannot be drawn directly in Compose).
         val logoLabel = stringResource(R.string.about_logo_cd)
         Box(
             Modifier
@@ -97,6 +110,7 @@ fun AboutPage(actions: MusicActions, onOpenPrivacy: () -> Unit) {
                 painter = painterResource(R.mipmap.ic_launcher_foreground),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                // Adaptive layers are 108 dp with a 72 dp visible window: scale to fill that window.
                 modifier = Modifier.fillMaxSize().scale(1.5f),
             )
         }
@@ -161,6 +175,7 @@ fun AboutPage(actions: MusicActions, onOpenPrivacy: () -> Unit) {
             textAlign = TextAlign.Center,
         )
     }
+
     if (showLicences) {
         com.dopavin.ui.components.GlassDialog(
             title = stringResource(R.string.about_licences),
@@ -182,6 +197,7 @@ fun AboutPage(actions: MusicActions, onOpenPrivacy: () -> Unit) {
         )
     }
 }
+
 @Composable
 private fun AboutRow(
     icon: Int,

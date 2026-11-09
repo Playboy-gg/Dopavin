@@ -1,4 +1,5 @@
 package com.dopavin.ui.screens
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,11 @@ import com.dopavin.ui.components.IconAction
 import com.dopavin.ui.components.PlayPauseButton
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
+
+/**
+ * Driving mode: only what you need with one glance and one big tap. Large title, three huge
+ * transport buttons, screen stays on. Opened from Now Playing > More controls.
+ */
 @Composable
 fun DrivingScreen(
     playback: PlaybackUi,
@@ -89,6 +95,7 @@ fun DrivingScreen(
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
+        // The space between title and controls shows the lyrics line by line (empty when there are none).
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             if (song != null) DrivingLyrics(song, playback, lyrics, lyricsOnline, actions)
         }
@@ -124,6 +131,11 @@ fun DrivingScreen(
         Spacer(Modifier.height(Dimens.xl))
     }
 }
+
+/**
+ * Three lyric lines for a glance: the one before, the one being sung (karaoke highlight) and the
+ * next. Only synced lyrics are shown; plain lyrics, no lyrics and loading leave the space empty.
+ */
 @Composable
 private fun DrivingLyrics(
     song: Song,
@@ -132,6 +144,7 @@ private fun DrivingLyrics(
     lyricsOnline: Boolean,
     actions: MusicActions,
 ) {
+    // Now Playing may have loaded these already; only fetch when the shown lyrics are for another song.
     LaunchedEffect(song.id, lyricsOnline) {
         if (lyrics.songId != song.id) actions.loadLyrics(song)
     }
@@ -174,4 +187,5 @@ private fun DrivingLyrics(
         }
     }
 }
+
 private const val DRIVING_LEAD_MS = 300L

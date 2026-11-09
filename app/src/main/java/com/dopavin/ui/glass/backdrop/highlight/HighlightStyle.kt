@@ -1,4 +1,14 @@
+/*
+ * Vendored from Kyant0/backdrop v2.0.0 (io.github.kyant0:backdrop)
+ * https://github.com/Kyant0/backdrop — Copyright 2025 Kyant0, Apache License 2.0
+ *
+ * Vendored so the library ships as source with this app (binary AARs compiled
+ * against older Compose broke at runtime) and to add a backdrop resolution
+ * scale for cheaper effect rendering. KMP expect/actual declarations were
+ * merged into this single Android source set. Package renamed accordingly.
+ */
 package com.dopavin.ui.glass.backdrop.highlight
+
 import androidx.annotation.FloatRange
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.runtime.Immutable
@@ -15,24 +25,31 @@ import com.dopavin.ui.glass.backdrop.internal.AmbientHighlightShaderString
 import com.dopavin.ui.glass.backdrop.internal.DefaultHighlightShaderString
 import com.dopavin.ui.glass.backdrop.isRuntimeShaderSupported
 import kotlin.math.PI
+
 @Immutable
 interface HighlightStyle {
+
     val color: Color
+
     val blendMode: BlendMode
+
     fun DrawScope.createShader(
         shape: Shape,
         runtimeShaderCache: RuntimeShaderCache
     ): RuntimeShader?
+
     @Immutable
     data class Plain(
         override val color: Color = Color.White.copy(alpha = 0.38f),
         override val blendMode: BlendMode = BlendMode.Plus
     ) : HighlightStyle {
+
         override fun DrawScope.createShader(
             shape: Shape,
             runtimeShaderCache: RuntimeShaderCache
         ): RuntimeShader? = null
     }
+
     @Immutable
     data class Default(
         override val color: Color = Color.White.copy(alpha = 0.5f),
@@ -40,6 +57,7 @@ interface HighlightStyle {
         val angle: Float = 45f,
         @param:FloatRange(from = 0.0) val falloff: Float = 1f
     ) : HighlightStyle {
+
         override fun DrawScope.createShader(
             shape: Shape,
             runtimeShaderCache: RuntimeShaderCache
@@ -60,12 +78,16 @@ interface HighlightStyle {
             }
         }
     }
+
     @Immutable
     data class Ambient(
         @param:FloatRange(from = 0.0, to = 1.0) val intensity: Float = 0.38f
     ) : HighlightStyle {
+
         override val color: Color = Color.White.copy(alpha = intensity)
+
         override val blendMode: BlendMode = DrawScope.DefaultBlendMode
+
         override fun DrawScope.createShader(
             shape: Shape,
             runtimeShaderCache: RuntimeShaderCache
@@ -85,15 +107,20 @@ interface HighlightStyle {
             }
         }
     }
+
     companion object {
+
         @Stable
         val Default: Default = Default()
+
         @Stable
         val Ambient: Ambient = Ambient()
+
         @Stable
         val Plain: Plain = Plain()
     }
 }
+
 private fun DrawScope.getCornerRadii(shape: Shape): FloatArray {
     val size = size
     val maxRadius = size.minDimension / 2f

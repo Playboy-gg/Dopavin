@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -19,6 +20,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dopavin.ui.theme.AppTheme
+
+/**
+ * Three animated bars: the "this is the song playing" marker. Static short bars when paused
+ * or when reduce-motion is on, so the state is still visible without movement.
+ */
 @Composable
 fun EqualizerBars(
     playing: Boolean,
@@ -52,6 +58,7 @@ fun EqualizerBars(
         b = remember { mutableFloatStateOf(0.7f) }
         c = remember { mutableFloatStateOf(0.5f) }
     }
+
     Canvas(modifier.size(size)) {
         val barWidth = this.size.width / 5f
         val gap = barWidth / 2f

@@ -1,4 +1,5 @@
 package com.kyant.capsule
+
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
@@ -6,22 +7,27 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.util.fastCoerceAtLeast
+
 @Stable
 fun ContinuousRoundedRectangle.concentricInset(padding: Dp): ContinuousRoundedRectangle {
     return ConcentricContinuousRoundedRectangle(this, padding)
 }
+
 @Stable
 fun ContinuousRoundedRectangle.concentricOutset(padding: Dp): ContinuousRoundedRectangle {
     return ConcentricContinuousRoundedRectangle(this, -padding)
 }
+
 @Stable
 fun AbsoluteContinuousRoundedRectangle.concentricInset(padding: Dp): AbsoluteContinuousRoundedRectangle {
     return ConcentricAbsoluteContinuousRoundedRectangle(this, padding)
 }
+
 @Stable
 fun AbsoluteContinuousRoundedRectangle.concentricOutset(padding: Dp): AbsoluteContinuousRoundedRectangle {
     return ConcentricAbsoluteContinuousRoundedRectangle(this, -padding)
 }
+
 @Immutable
 private data class ConcentricContinuousRoundedRectangle(
     val containerShape: ContinuousRoundedRectangle,
@@ -33,6 +39,7 @@ private data class ConcentricContinuousRoundedRectangle(
     bottomStart = ConcentricCornerSize(containerShape.bottomStart, padding),
     continuity = containerShape.continuity
 )
+
 @Immutable
 private data class ConcentricAbsoluteContinuousRoundedRectangle(
     val containerShape: AbsoluteContinuousRoundedRectangle,
@@ -44,11 +51,13 @@ private data class ConcentricAbsoluteContinuousRoundedRectangle(
     bottomLeft = ConcentricCornerSize(containerShape.bottomStart, padding),
     continuity = containerShape.continuity
 )
+
 @Immutable
 private data class ConcentricCornerSize(
     private val containerCornerSize: CornerSize,
     private val padding: Dp
 ) : CornerSize {
+
     override fun toPx(shapeSize: Size, density: Density): Float {
         return (containerCornerSize.toPx(shapeSize, density) - with(density) { padding.toPx() })
             .fastCoerceAtLeast(0f)

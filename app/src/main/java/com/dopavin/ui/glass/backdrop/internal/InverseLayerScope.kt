@@ -1,4 +1,14 @@
+/*
+ * Vendored from Kyant0/backdrop v2.0.0 (io.github.kyant0:backdrop)
+ * https://github.com/Kyant0/backdrop — Copyright 2025 Kyant0, Apache License 2.0
+ *
+ * Vendored so the library ships as source with this app (binary AARs compiled
+ * against older Compose broke at runtime) and to add a backdrop resolution
+ * scale for cheaper effect rendering. KMP expect/actual declarations were
+ * merged into this single Android source set. Package renamed accordingly.
+ */
 package com.dopavin.ui.glass.backdrop.internal
+
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -18,10 +28,13 @@ import androidx.compose.ui.unit.Density
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+
 internal class InverseLayerScope : GraphicsLayerScope {
+
     override var size: Size = Size.Unspecified
     override var density: Float = 1f
     override var fontScale: Float = 1f
+
     override var scaleX: Float = 1f
     override var scaleY: Float = 1f
     override var alpha: Float = 0f
@@ -41,7 +54,9 @@ internal class InverseLayerScope : GraphicsLayerScope {
     var blendMode: BlendMode = BlendMode.SrcOver
     var colorFilter: ColorFilter? = null
     override var compositingStrategy: CompositingStrategy = CompositingStrategy.Auto
+
     private var matrix: Matrix? = null
+
     fun DrawTransform.inverseTransform(
         density: Density,
         layerBlock: GraphicsLayerScope.() -> Unit
@@ -49,17 +64,21 @@ internal class InverseLayerScope : GraphicsLayerScope {
         this@InverseLayerScope.size = size
         this@InverseLayerScope.density = density.density
         fontScale = density.fontScale
+
         layerBlock()
+
         inverseTransformAtTopLeft(
             rotationZ = rotationZ,
             scaleX = scaleX,
             scaleY = scaleY
         )
     }
+
     fun reset() {
         size = Size.Unspecified
         density = 1f
         fontScale = 1f
+
         scaleX = 1f
         scaleY = 1f
         alpha = 1f
@@ -79,8 +98,10 @@ internal class InverseLayerScope : GraphicsLayerScope {
         blendMode = BlendMode.SrcOver
         colorFilter = null
         compositingStrategy = CompositingStrategy.Auto
+
         matrix = null
     }
+
     private fun DrawTransform.inverseTransformAtTopLeft(
         rotationZ: Float = 0f,
         scaleX: Float = 1f,
@@ -92,15 +113,19 @@ internal class InverseLayerScope : GraphicsLayerScope {
             }
             return
         }
+
         val matrix = matrix ?: Matrix().also { matrix = it }
         if (matrix.values.size < 16) return
+
         val rz = rotationZ * (PI / 180.0)
         val rsz = sin(rz).toFloat()
         val rcz = cos(rz).toFloat()
+
         val a00 = rcz * scaleX
         val a01 = rsz * scaleY
         val a10 = -rsz * scaleX
         val a11 = rcz * scaleY
+
         val det = a00 * a11 - a01 * a10
         if (det == 0f) return
         val invDet = 1f / det
@@ -108,6 +133,7 @@ internal class InverseLayerScope : GraphicsLayerScope {
         matrix[0, 1] = -a01 * invDet
         matrix[1, 0] = -a10 * invDet
         matrix[1, 1] = a00 * invDet
+
         transform(matrix)
     }
 }

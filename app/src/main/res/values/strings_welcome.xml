@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home category tile for a language without its own tile; %1$s is the language, written in the phone's language. -->
+    <string name="cat_regional">%1$s hits</string>
+    <!-- First-run card on Home -->
+    <string name="welcome_title">Start with your favourite artists</string>
+    <string name="welcome_body">Pick a few and Home becomes yours. Your picks stay on this phone.</string>
+    <string name="welcome_done">Done</string>
+    <string name="welcome_skip">Skip for now</string>
+    <!-- Onboarding (first run only) -->
+    <string name="onb_skip">Skip</string>
+    <string name="onb_next">Next</string>
+    <string name="onb_get_started">Get started</string>
+    <string name="onb_start">Start listening</string>
+    <string name="onb_page_of">Page %1$d of %2$d</string>
+    <string name="onb_welcome_title">Welcome to Dopavin</string>
+    <string name="onb_welcome_body">Music, your way. No account, no sign-in.</string>
+    <string name="onb_search_title">Find anything to play</string>
+    <string name="onb_search_body">Search songs, albums and artists and play them at once. No account needed.</string>
+    <string name="onb_download_title">Keep your favourites</string>
+    <string name="onb_download_body">Download a song once and it plays without internet, whenever you like.</string>
+    <string name="onb_lyrics_title">Sing along</string>
+    <string name="onb_lyrics_body">Lyrics follow the song line by line, or even word by word, when they are available.</string>
+</resources>

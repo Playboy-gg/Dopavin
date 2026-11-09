@@ -1,4 +1,5 @@
 package com.dopavin.ui.screens
+
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -41,20 +42,30 @@ import com.dopavin.ui.components.SettingsRow
 import com.dopavin.ui.components.ToggleRow
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
+
+/**
+ * F-217: "Accounts & services". Everything here is optional and off until the owner connects it:
+ * ListenBrainz scrobbling, the owner's own Subsonic music server, and a YouTube Music sign-in.
+ * [match] filters rows while Settings search is active.
+ */
 @Composable
 fun AccountsPage(actions: MusicActions, match: (String) -> Boolean) {
     val acc = LocalAccounts.current
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    // Coming back from the sign-in screen: the session was stored there, so reload what this page shows.
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) actions.refreshAccounts() }
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
     }
+
     var lbDialog by remember { mutableStateOf(false) }
     var subDialog by remember { mutableStateOf(false) }
     var searchDialog by remember { mutableStateOf(false) }
     val full = match("")
+
+    // ListenBrainz
     val lbConnect = stringResource(R.string.acc_lb_connect)
     val lbSend = stringResource(R.string.acc_lb_send)
     if (full || match(lbConnect) || match(lbSend)) Label(R.string.acc_lb_section)
@@ -75,6 +86,8 @@ fun AccountsPage(actions: MusicActions, match: (String) -> Boolean) {
         val off = stringResource(R.string.acc_disconnect)
         if (match(off)) SettingsRow(off, onClick = actions::disconnectListenBrainz, chevron = false)
     }
+
+    // Subsonic
     val subConnect = stringResource(R.string.acc_sub_connect)
     val subRandom = stringResource(R.string.acc_sub_random)
     val subStarred = stringResource(R.string.acc_sub_starred)
@@ -91,6 +104,8 @@ fun AccountsPage(actions: MusicActions, match: (String) -> Boolean) {
         val off = stringResource(R.string.acc_sub_disconnect, acc.subsonicHost)
         if (full) SettingsRow(off, onClick = actions::disconnectSubsonic, chevron = false)
     }
+
+    // YouTube Music
     val ytIn = stringResource(R.string.acc_yt_sign_in)
     val ytLikes = stringResource(R.string.acc_yt_likes)
     val ytImport = stringResource(R.string.acc_yt_import)
@@ -116,6 +131,7 @@ fun AccountsPage(actions: MusicActions, match: (String) -> Boolean) {
         val out = stringResource(R.string.acc_yt_sign_out)
         if (match(out)) SettingsRow(out, onClick = actions::signOutYouTube, chevron = false)
     }
+
     if (full) {
         AppText(
             stringResource(R.string.acc_privacy),
@@ -125,6 +141,7 @@ fun AccountsPage(actions: MusicActions, match: (String) -> Boolean) {
             modifier = Modifier.padding(horizontal = Dimens.screenEdge, vertical = Dimens.lg),
         )
     }
+
     if (lbDialog) {
         var token by remember { mutableStateOf("") }
         GlassDialog(
@@ -166,6 +183,7 @@ fun AccountsPage(actions: MusicActions, match: (String) -> Boolean) {
         }
     }
 }
+
 @Composable
 private fun Label(res: Int) {
     AppText(
@@ -175,6 +193,8 @@ private fun Label(res: Int) {
         modifier = Modifier.padding(start = Dimens.screenEdge, top = Dimens.lg, bottom = Dimens.xs),
     )
 }
+
+/** Pill text field in the style of the playlist-name dialog. */
 @Composable
 private fun DialogField(
     value: String,

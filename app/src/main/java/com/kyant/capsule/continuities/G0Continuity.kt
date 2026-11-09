@@ -1,10 +1,13 @@
 package com.kyant.capsule.continuities
+
 import androidx.compose.runtime.Immutable
 import com.kyant.capsule.Continuity
 import com.kyant.capsule.path.PathSegments
 import com.kyant.capsule.path.buildPathSegments
+
 @Immutable
 data object G0Continuity : Continuity {
+
     override fun createRoundedRectanglePathSegments(
         width: Double,
         height: Double,
@@ -33,11 +36,13 @@ data object G0Continuity : Continuity {
             close()
         }
     }
+
     override fun lerp(stop: Continuity, fraction: Double): Continuity {
         return when (stop) {
             is G0Continuity,
             is G1Continuity,
             is G2Continuity -> if (fraction < 0.5) this else stop
+
             else -> stop.lerp(this, 1f - fraction)
         }
     }

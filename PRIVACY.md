@@ -1,6 +1,6 @@
 # Privacy policy
 
-**Effective: 2026-11-01** · App: Dopavin (`com.dopavin`) · Contact: open an issue at <https://github.com/playboy-gg/Dopavin/issues>
+**Effective: 2026-11-09** · App: Dopavin (`com.dopavin`) · Contact: open an issue at <https://github.com/playboy-gg/Dopavin/issues>
 
 ## The short version
 
@@ -25,9 +25,10 @@ Dopavin only uses the network for the features you use:
 
 | Destination | What is sent | Why |
 |---|---|---|
-| YouTube Music, through NewPipe Extractor | search queries, video / playlist / channel ids | search, stream and download songs |
+| YouTube Music, through NewPipe Extractor | search queries, video / playlist / channel ids, and your country code (two letters, read from your SIM, network or phone region; never typed in by you) | search, stream and download songs, and show charts of your own country |
 | Lyrics providers (LRCLIB, Better Lyrics, Portato, LyricsPlus, Unison, KuGou, lrc.red / BiniLyrics) | track title, artist, album and duration | find synced lyrics |
 | GitHub (`api.github.com`) | nothing about you; a standard HTTPS request | check for a newer Dopavin release |
+| GitHub (`github.com`, which hands over the picture from `avatars.githubusercontent.com`) | nothing about you; a standard HTTPS request for a public profile picture | show the contributors' pictures in Settings > Contributors; the pictures are kept in the app's cache |
 | ListenBrainz, only if you connect it | your token and the song you are playing | scrobbling |
 | Your Subsonic-compatible server, only if you configure it | your credentials and the songs you request | stream from your own server |
 | YouTube Music sign-in, only if you use it | Google's own sign-in flow in a WebView; the session cookie stays on the phone | import your liked songs and playlists |

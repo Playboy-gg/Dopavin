@@ -41,6 +41,26 @@ private class Fake(
     }
 }
 
+private fun wordDoc(source: String) = LyricsDoc(
+    source,
+    listOf(LyricLine(1000, "w", listOf(LyricWord(1000, 1500, "w")))),
+    null,
+    0.9f,
+)
+
+/** A provider that says which kinds it can deliver, like the real ones. */
+private class CapRaceFake(
+    override val id: String,
+    override val capabilities: Set<LyricsKind>,
+    private val delayMs: Long,
+    private val outcome: () -> ProviderOutcome,
+) : LyricsProvider {
+    override suspend fun fetch(query: LyricsQuery): ProviderOutcome {
+        delay(delayMs)
+        return outcome()
+    }
+}
+
 class LyricsRaceTest {
 
     private val cfg = RaceConfig(timeoutMs = 2_000, upgradeGraceMs = 300)
@@ -187,5 +207,41 @@ class LyricsRaceTest {
             }
         }.map { it.await() }
         assertTrue(results.all { it is RaceResult.Won })
+    }
+
+    @Test
+    fun `word synced beats an earlier line synced`() = runBlocking {
+        val line = CapRaceFake("line", setOf(LyricsKind.LineSynced), 20) { ProviderOutcome.Success(doc("line", true)) }
+        val word = CapRaceFake("word", setOf(LyricsKind.WordSynced, LyricsKind.LineSynced), 200) { ProviderOutcome.Success(wordDoc("word")) }
+        val r = raceLyrics(listOf(line, word), Q, RaceConfig(timeoutMs = 2_000, upgradeGraceMs = 300, wordGraceMs = 1_000)) as RaceResult.Won
+        assertEquals("word", r.doc.source)
+        assertEquals(LyricsKind.WordSynced, r.doc.kind)
+    }
+
+    @Test
+    fun `line synced stays when the word synced rival is too slow`() = runBlocking {
+        val line = CapRaceFake("line", setOf(LyricsKind.LineSynced), 20) { ProviderOutcome.Success(doc("line", true)) }
+        val word = CapRaceFake("word", setOf(LyricsKind.WordSynced), 1_500) { ProviderOutcome.Success(wordDoc("word")) }
+        val r = raceLyrics(listOf(line, word), Q, RaceConfig(timeoutMs = 3_000, upgradeGraceMs = 300, wordGraceMs = 300)) as RaceResult.Won
+        assertEquals("line", r.doc.source)
+    }
+
+    @Test
+    fun `line synced wins at once when no word capable provider is left`() = runBlocking {
+        val line = CapRaceFake("line", setOf(LyricsKind.LineSynced), 20) { ProviderOutcome.Success(doc("line", true)) }
+        val plainOnly = CapRaceFake("slow", setOf(LyricsKind.Plain), 1_500) { ProviderOutcome.Success(doc("slow", false)) }
+        val t0 = System.nanoTime()
+        val r = raceLyrics(listOf(line, plainOnly), Q, RaceConfig(timeoutMs = 3_000, wordGraceMs = 2_000)) as RaceResult.Won
+        assertEquals("line", r.doc.source)
+        assertTrue((System.nanoTime() - t0) / 1_000_000 < 800)
+    }
+
+    @Test
+    fun `plain then line then word ends on word`() = runBlocking {
+        val plain = CapRaceFake("plain", setOf(LyricsKind.Plain), 10) { ProviderOutcome.Success(doc("plain", false)) }
+        val line = CapRaceFake("line", setOf(LyricsKind.LineSynced), 80) { ProviderOutcome.Success(doc("line", true)) }
+        val word = CapRaceFake("word", setOf(LyricsKind.WordSynced), 160) { ProviderOutcome.Success(wordDoc("word")) }
+        val r = raceLyrics(listOf(plain, line, word), Q, RaceConfig(timeoutMs = 2_000, upgradeGraceMs = 1_000, wordGraceMs = 1_000)) as RaceResult.Won
+        assertEquals("word", r.doc.source)
     }
 }

@@ -1,4 +1,5 @@
 package com.dopavin.playback
+
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -14,12 +15,25 @@ import com.dopavin.R
 import com.dopavin.data.ArtworkLoader
 import com.dopavin.data.ArtworkSize
 import kotlin.concurrent.thread
+
+/**
+ * Home-screen widget (F-202, restyled F-211): artwork, title, artist and previous / play-pause / next, on a glass card
+ * with an ambience taken from the cover (see [WidgetStyle]).
+ *
+ * The playback service pushes what is playing through [push]; the widget keeps the last values in a small
+ * preferences file so it can draw itself again after a launcher restart. The buttons are media-button
+ * intents to [PlaybackService] (the Media3 session handles them), so they work while the app is closed.
+ */
 class NowPlayingWidget : AppWidgetProvider() {
+
     override fun onUpdate(context: Context, manager: AppWidgetManager, appWidgetIds: IntArray) {
         draw(context, manager, appWidgetIds, loadArt(context))
     }
+
     companion object {
         private const val PREFS = "now_playing_widget"
+
+        /** Remembers the current song and redraws every placed widget. Safe to call from any thread. */
         fun push(context: Context, title: String, artist: String, artworkUri: String?, playing: Boolean) {
             val app = context.applicationContext
             app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -28,17 +42,20 @@ class NowPlayingWidget : AppWidgetProvider() {
             val manager = AppWidgetManager.getInstance(app)
             val ids = manager.getAppWidgetIds(ComponentName(app, NowPlayingWidget::class.java))
             if (ids.isEmpty()) return
+            // Artwork is decoded off the caller's thread; the text and buttons are drawn at once.
             draw(app, manager, ids, null)
             thread(name = "widget-art") {
                 val bitmap = loadArt(app)
                 if (bitmap != null) draw(app, manager, ids, bitmap)
             }
         }
+
         private fun loadArt(context: Context): android.graphics.Bitmap? {
             val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("art", "").orEmpty()
             if (raw.isBlank()) return null
             return runCatching { ArtworkLoader.loadBlocking(context, android.net.Uri.parse(raw), ArtworkSize.Row) }.getOrNull()
         }
+
         private fun draw(context: Context, manager: AppWidgetManager, ids: IntArray, art: android.graphics.Bitmap?) {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val title = prefs.getString("title", "").orEmpty()
@@ -48,6 +65,7 @@ class NowPlayingWidget : AppWidgetProvider() {
             val idle = title.isBlank()
             views.setTextViewText(R.id.widget_title, if (idle) context.getString(R.string.widget_idle) else title)
             views.setTextViewText(R.id.widget_artist, if (idle) context.getString(R.string.widget_idle_hint) else artist)
+            // F-211: glass-and-ambience card drawn from the cover; rounded cover on top.
             views.setImageViewBitmap(R.id.widget_bg, WidgetStyle.background(art))
             if (art != null) views.setImageViewBitmap(R.id.widget_art, WidgetStyle.cover(art)) else views.setImageViewResource(R.id.widget_art, R.mipmap.ic_launcher)
             views.setImageViewResource(R.id.widget_play, if (playing) R.drawable.ic_pause else R.drawable.ic_play)
@@ -66,6 +84,7 @@ class NowPlayingWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_art, open)
             manager.updateAppWidget(ids, views)
         }
+
         private fun mediaButton(context: Context, keyCode: Int, requestCode: Int): PendingIntent {
             val intent = Intent(Intent.ACTION_MEDIA_BUTTON).setComponent(ComponentName(context, PlaybackService::class.java))
                 .putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(KeyEvent.ACTION_DOWN, keyCode))

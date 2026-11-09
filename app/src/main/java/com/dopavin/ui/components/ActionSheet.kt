@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,35 +33,60 @@ import com.dopavin.ui.DownloadsUi
 import com.dopavin.ui.MusicActions
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
+
+/** One tappable row of an action sheet. [destructive] tints it with the error colour. */
 data class SheetAction(
     val label: String,
     val icon: Int? = null,
     val destructive: Boolean = false,
     val onClick: () -> Unit,
 )
+
+/** What the sheet shows: a header (optional artwork + title + subtitle) and the action rows. */
 data class SheetRequest(
     val title: String,
     val subtitle: String? = null,
     val artwork: Uri? = null,
     val actions: List<SheetAction>,
+    /** Bounds of the button that opened the menu (window coordinates); filled in by [SheetHost.show]. */
     val anchor: androidx.compose.ui.geometry.Rect? = null,
 )
+
+/**
+ * The single place that owns the "more options" menu (F-148: an anchored dropdown next to the
+ * button, replacing the F-109 bottom sheet). Any screen asks for it through [show]; [ActionSheetLayer]
+ * (mounted once, at the root of the app) draws it.
+ */
 @Stable
 class SheetHost {
     var request by mutableStateOf<SheetRequest?>(null)
         private set
+
     fun show(request: SheetRequest) {
         this.request = if (request.anchor != null) request else request.copy(anchor = MenuAnchor.fresh())
     }
+
     fun hide() {
         request = null
     }
 }
+
 val LocalSheetHost = staticCompositionLocalOf { SheetHost() }
+
+/** The app's actions and download state, so a song row needs no extra parameters to offer "Download". */
 val LocalActions = staticCompositionLocalOf<MusicActions?> { null }
 val LocalDownloads = staticCompositionLocalOf { DownloadsUi() }
+
+/** F-206: the update check state, for the About page. */
 val LocalUpdate = staticCompositionLocalOf { com.dopavin.data.UpdateUi() }
+
+/** F-217: what the Accounts page shows (no secrets). */
 val LocalAccounts = staticCompositionLocalOf { com.dopavin.data.AccountsUi() }
+
+/**
+ * Bridge for call sites that keep a local "open" flag: when [expanded] turns true the sheet is shown
+ * on the shared host and [onDismiss] resets the caller's flag at once (the host owns visibility).
+ */
 @Composable
 fun ShowSheetEffect(
     expanded: Boolean,
@@ -75,6 +101,8 @@ fun ShowSheetEffect(
         }
     }
 }
+
+/** Draws the current [SheetHost] request as the anchored dropdown next to the button that opened it. */
 @Composable
 fun ActionSheetLayer(host: SheetHost) {
     val request = host.request ?: return
@@ -110,6 +138,7 @@ fun ActionSheetLayer(host: SheetHost) {
                 icon = action.icon,
                 destructive = action.destructive,
                 onClick = {
+                    // Close first, then act, so the action's own UI (snackbar, new screen) is never hidden by the menu.
                     host.hide()
                     action.onClick()
                 },

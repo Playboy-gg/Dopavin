@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import androidx.annotation.DrawableRes
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -38,17 +39,24 @@ import com.dopavin.ui.glass.nav.NavTab
 import com.dopavin.ui.theme.AppTheme
 import com.dopavin.ui.theme.Dimens
 import com.kyant.capsule.ContinuousCapsule
+
 private class RailTab(
     val destination: Destination,
     val label: Int,
     @DrawableRes val icon: Int,
     @DrawableRes val iconSelected: Int,
 )
+
 private val Tabs = listOf(
     RailTab(Destination.Home, R.string.nav_home, R.drawable.ic_home_outline, R.drawable.ic_home),
     RailTab(Destination.Search, R.string.nav_search, R.drawable.ic_search, R.drawable.ic_search),
     RailTab(Destination.Library, R.string.nav_library_hub, R.drawable.ic_library_outline, R.drawable.ic_library),
 )
+
+/**
+ * Bottom chrome: floating glass tab bar (draggable puck) with the
+ * mini player as its accessory, or the docked bar when glass is off. [accessory] is the mini player.
+ */
 @Composable
 fun BottomNav(
     selected: Destination,
@@ -72,6 +80,8 @@ fun BottomNav(
         accessory = accessory,
     )
 }
+
+/** Glass off: a plain floating pill with a tinted indicator (the mini player floats above it). */
 @Composable
 fun SolidBottomNav(
     selected: Destination,
@@ -113,6 +123,7 @@ fun SolidBottomNav(
         }
     }
 }
+
 @Composable
 private fun NavItem(
     label: String,
@@ -135,7 +146,7 @@ private fun NavItem(
             .selectable(
                 selected = selected,
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null,
+                indication = null, // the sliding indicator + tint is the selection feedback
                 role = Role.Tab,
                 onClick = onClick,
             ),
@@ -156,6 +167,8 @@ private fun NavItem(
         )
     }
 }
+
+/** Landscape / tablet variant: the same glass tabs as a vertical rail on the left edge. */
 @Composable
 fun NavRail(
     selected: Destination,
@@ -206,5 +219,7 @@ fun NavRail(
         }
     }
 }
+
+/** Width of [NavRail] plus its start margin, for screens that make room for it. */
 val NavRailWidth = 72.dp
 val NavRailInset = NavRailWidth + Dimens.md + Dimens.sm

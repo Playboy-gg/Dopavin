@@ -1,17 +1,29 @@
 package com.dopavin.data
+
 import java.text.Normalizer
 import kotlin.math.abs
+
+/**
+ * Search helpers with no Android types (JVM-testable): spelling suggestion ("Did you mean") built only
+ * from names the user really has (library titles, artists, albums, recent searches). Nothing is
+ * invented and nothing leaves the device.
+ */
 object SearchAssist {
     private val marks = Regex("\\p{Mn}+")
     private val nonWord = Regex("[^\\p{L}\\p{N}]+")
+
     fun norm(s: String): String =
         Normalizer.normalize(s, Normalizer.Form.NFD).replace(marks, "").lowercase().replace(nonWord, " ").trim()
+
+    /** Most typos tolerated for a word of this length; short words are never "corrected". */
     internal fun allowed(len: Int): Int = when {
         len < 4 -> 0
         len < 6 -> 1
         len < 10 -> 2
         else -> 3
     }
+
+    /** Optimal-string-alignment distance (insert, delete, substitute, swap neighbours), early exit past [max]. */
     internal fun distance(a: String, b: String, max: Int): Int {
         if (abs(a.length - b.length) > max) return max + 1
         var prev2 = IntArray(b.length + 1)
@@ -33,19 +45,30 @@ object SearchAssist {
         }
         return prev[b.length]
     }
+
+    /**
+     * A corrected spelling of [query] taken from [vocabulary] (display names), or null when the query
+     * already matches something, is too short, or nothing is close enough. Whole-name matches win over
+     * word-by-word repair ("blindng lights" -> "Blinding Lights").
+     */
     fun didYouMean(query: String, vocabulary: Collection<String>): String? {
         val q = norm(query)
         if (q.length < 4) return null
         val entries = vocabulary.mapNotNull { v -> norm(v).takeIf { it.isNotEmpty() }?.let { it to v.trim() } }
+        // The query already finds something: nothing to correct.
         if (entries.any { (n, _) -> n.contains(q) }) return null
+
         val max = allowed(q.length)
         var best: String? = null
         var bestD = Int.MAX_VALUE
         for ((n, display) in entries) {
+            // Whole name, or its start when the user is still typing.
             val d = minOf(distance(q, n, max), distance(q, n.take(q.length), max))
             if (d in 1..max && d < bestD) { bestD = d; best = display }
         }
         if (best != null) return best
+
+        // Word-by-word repair using the words the library really contains.
         val words = HashMap<String, String>()
         for ((n, display) in entries) {
             val shown = display.split(Regex("\\s+")).map { it.trim { c -> !c.isLetterOrDigit() } }
@@ -66,6 +89,7 @@ object SearchAssist {
             if (bw != null) { changed = true; words.getValue(bw) } else w
         }
         if (!changed) return null
+        // Every word must now exist, otherwise the "correction" is still a guess.
         val fixed = out.joinToString(" ")
         val fn = norm(fixed)
         return if (fn.split(' ').all { it in words }) fixed else null

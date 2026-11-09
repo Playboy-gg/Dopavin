@@ -1,4 +1,5 @@
 package com.dopavin.ui.components
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,15 +49,26 @@ import com.dopavin.ui.glass.backdrop.effects.colorControls
 import com.dopavin.ui.glass.backdrop.effects.lens
 import com.dopavin.ui.glass.backdrop.highlight.Highlight
 import com.dopavin.ui.theme.AppTheme
+
+/**
+ * F-139. The one liquid-glass dialog of the app (look from the supplied Kyant0 dialog sample, fixed
+ * values, not user-customisable). A call site just writes `GlassDialog(...)` where it used to write
+ * `AlertDialog(...)`; the card is shown by [DialogLayer] in the app's overlay layer so it blurs the
+ * screen behind it (an AlertDialog is a separate window and cannot). Without glass: a solid card.
+ */
 @Stable
 class DialogHost {
     var content by mutableStateOf<(@Composable () -> Unit)?>(null)
 }
+
 val LocalDialogHost = staticCompositionLocalOf<DialogHost?> { null }
+
+/** Draws the dialog currently registered on [host]. Place it last, above sheets. */
 @Composable
 fun DialogLayer(host: DialogHost) {
     host.content?.invoke()
 }
+
 @Composable
 fun GlassDialog(
     title: String,
@@ -84,6 +96,7 @@ fun GlassDialog(
         onDispose { if (host.content === mine) host.content = null }
     }
 }
+
 @Composable
 private fun GlassDialogCard(
     title: String,
@@ -107,7 +120,9 @@ private fun GlassDialogCard(
     val buttonFill = if (glassOn) containerColor.copy(0.2f) else colors.surfaceHigh
     val shape = RoundedCornerShape(36.dp)
     val noRipple = remember { MutableInteractionSource() }
+
     BackHandler(onBack = onDismiss)
+
     Box(
         Modifier
             .fillMaxSize()
@@ -138,6 +153,7 @@ private fun GlassDialogCard(
                     },
                 )
                 .fillMaxWidth()
+                // Taps inside the card must not reach the dismiss scrim.
                 .clickable(interactionSource = noRipple, indication = null, onClick = {}),
         ) {
             BasicText(
@@ -187,6 +203,8 @@ private fun GlassDialogCard(
         }
     }
 }
+
+/** A full-width pill button for dialogs: no ripple, no blur on the text. */
 @Composable
 fun DialogPillButton(
     text: String,
@@ -214,6 +232,8 @@ fun DialogPillButton(
         BasicText(text, style = TextStyle(if (enabled) textColor else textColor.copy(0.6f), 16.sp, FontWeight.Medium))
     }
 }
+
+/** Text/ink colour for content placed inside a [GlassDialog]: black/white on glass, theme colour on the solid card. */
 @Composable
 fun glassInk(): Color {
     val colors = AppTheme.colors

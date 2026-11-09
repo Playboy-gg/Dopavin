@@ -24,7 +24,10 @@
     <string name="update_downloading_cd">Download %1$d percent</string>
     <string name="update_ready">Downloaded and checked. Android will ask you to confirm the install.</string>
     <string name="update_allow_installs">Allow installs from Dopavin, then go back and tap Install update</string>
-    <string name="update_available_toast">A new version is available. See Settings → Updates.</string>
+    <string name="update_dialog_title">Update available</string>
+    <string name="update_dialog_update">Update now</string>
+    <string name="update_later">Later</string>
+    <string name="update_skip_version">Skip this version</string>
     <string name="update_err_network">The download failed. Check your connection and try again.</string>
     <string name="update_err_storage">Not enough free space to download the update.</string>
     <string name="update_err_invalid">The downloaded file is not a valid app package.</string>

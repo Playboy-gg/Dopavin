@@ -1,4 +1,5 @@
 package com.kyant.capsule.continuities
+
 import androidx.annotation.FloatRange
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.util.fastCoerceAtLeast
@@ -9,6 +10,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+
 @Immutable
 data class G2ContinuityProfile(
     @param:FloatRange(from = 0.0) val extendedFraction: Double,
@@ -16,14 +18,17 @@ data class G2ContinuityProfile(
     @param:FloatRange(from = 0.0) val bezierCurvatureScale: Double,
     @param:FloatRange(from = 0.0, fromInclusive = false) val arcCurvatureScale: Double
 ) {
+
     private var _bezier: CubicBezier? = null
     internal val bezier: CubicBezier
         get() = _bezier ?: createBaseBezier().also { _bezier = it }
+
     private fun createBaseBezier(): CubicBezier {
         val arcRadians = PI * 0.5 * arcFraction
         val bezierRadians = (PI * 0.5 - arcRadians) * 0.5
         val sin = sin(bezierRadians)
         val cos = cos(bezierRadians)
+
         return if (bezierCurvatureScale == 1.0 && arcCurvatureScale == 1.0) {
             val halfTan = sin / (1.0 + cos)
             CubicBezier(
@@ -45,7 +50,9 @@ data class G2ContinuityProfile(
             )
         }
     }
+
     companion object {
+
         val RoundedRectangle: G2ContinuityProfile =
             G2ContinuityProfile(
                 extendedFraction = 0.5286651,
@@ -53,6 +60,7 @@ data class G2ContinuityProfile(
                 bezierCurvatureScale = 1.0732051,
                 arcCurvatureScale = 1.0732051
             )
+
         val Capsule: G2ContinuityProfile =
             G2ContinuityProfile(
                 extendedFraction = 0.5286651 * 0.75,
@@ -60,6 +68,7 @@ data class G2ContinuityProfile(
                 bezierCurvatureScale = 1.0,
                 arcCurvatureScale = 1.0
             )
+
         val G1Equivalent: G2ContinuityProfile =
             G2ContinuityProfile(
                 extendedFraction = 0.0,
@@ -69,6 +78,7 @@ data class G2ContinuityProfile(
             )
     }
 }
+
 fun lerp(start: G2ContinuityProfile, stop: G2ContinuityProfile, fraction: Double): G2ContinuityProfile {
     return G2ContinuityProfile(
         extendedFraction = lerp(start.extendedFraction, stop.extendedFraction, fraction),
@@ -77,6 +87,7 @@ fun lerp(start: G2ContinuityProfile, stop: G2ContinuityProfile, fraction: Double
         arcCurvatureScale = lerp(start.arcCurvatureScale, stop.arcCurvatureScale, fraction)
     )
 }
+
 private fun generateG2ContinuousBezierWithZeroStartCurvature(
     start: Point,
     end: Point,
@@ -90,8 +101,10 @@ private fun generateG2ContinuousBezierWithZeroStartCurvature(
     val dy = end.y - start.y
     val c1 = -dy * startTangent.x + dx * startTangent.y
     val c2 = dy * endTangent.x - dx * endTangent.y
+
     val lambda0 = -c2 / b - a2 * c1 * c1 / b / b / b
     val lambda3 = -c1 / b
+
     val p0 = start
     val p1 = start + Point(
         (lambda0 * startTangent.x).fastCoerceAtLeast(0.0),
@@ -102,5 +115,6 @@ private fun generateG2ContinuousBezierWithZeroStartCurvature(
         (lambda3 * endTangent.y).fastCoerceAtLeast(0.0)
     )
     val p3 = end
+
     return CubicBezier(p0, p1, p2, p3)
 }

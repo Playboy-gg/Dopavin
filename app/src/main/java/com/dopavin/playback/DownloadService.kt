@@ -1,4 +1,5 @@
 package com.dopavin.playback
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -20,10 +21,19 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+
+/**
+ * Keeps the process alive while songs download and shows one progress notification. The engine
+ * itself is [DownloadCenter]; this service only mirrors its state and stops itself when nothing is
+ * queued or running any more.
+ */
 class DownloadService : Service() {
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var watcher: Job? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_CANCEL_ALL) {
             DownloadCenter.cancelAll()
@@ -50,10 +60,12 @@ class DownloadService : Service() {
         }
         return START_NOT_STICKY
     }
+
     override fun onDestroy() {
         scope.cancel()
         super.onDestroy()
     }
+
     private fun ensureChannel() {
         val manager = getSystemService(NotificationManager::class.java)
         if (manager.getNotificationChannel(CHANNEL_ID) == null) {
@@ -66,6 +78,7 @@ class DownloadService : Service() {
             )
         }
     }
+
     private fun buildNotification(items: List<DownloadItem>): Notification {
         val running = items.filter { it.status != DownloadStatus.Failed }
         val active = running.firstOrNull { it.status == DownloadStatus.Active } ?: running.firstOrNull()
@@ -98,6 +111,7 @@ class DownloadService : Service() {
             .addAction(0, getString(R.string.download_cancel_all), cancel)
             .build()
     }
+
     private companion object {
         const val CHANNEL_ID = "downloads"
         const val NOTIFICATION_ID = 4107

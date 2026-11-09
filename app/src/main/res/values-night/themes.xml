@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- windowBackground equals the dark canvas token. -->
     <style name="Theme.Dopavin" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">#0B0B10</item>
         <item name="android:statusBarColor">@android:color/transparent</item>

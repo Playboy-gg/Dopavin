@@ -1,13 +1,18 @@
 package com.dopavin.ui.components
+
 import android.content.Context
 import android.content.Intent
 import com.dopavin.R
 import com.dopavin.data.Song
+
+/** The text that is shared for [song]: "Title - Artist" plus a YouTube Music link when the song has a video id. */
 fun shareTextFor(song: Song): String {
     val head = if (song.artist.isBlank()) song.title else "${song.title} - ${song.artist}"
     val id = song.videoId
     return if (id.isNullOrBlank()) head else "$head\nhttps://music.youtube.com/watch?v=$id"
 }
+
+/** Opens the system share sheet with plain text. Needs no permission; never throws if no app can handle it. */
 fun shareSong(context: Context, song: Song) {
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
@@ -19,5 +24,6 @@ fun shareSong(context: Context, song: Song) {
     try {
         context.startActivity(chooser)
     } catch (_: android.content.ActivityNotFoundException) {
+        // No app can share text; nothing sensible to do.
     }
 }

@@ -1,5 +1,16 @@
+/*
+ * Vendored from Kyant0/backdrop v2.0.0 (io.github.kyant0:backdrop)
+ * https://github.com/Kyant0/backdrop — Copyright 2025 Kyant0, Apache License 2.0
+ *
+ * Vendored so the library ships as source with this app (binary AARs compiled
+ * against older Compose broke at runtime) and to add a backdrop resolution
+ * scale for cheaper effect rendering. KMP expect/actual declarations were
+ * merged into this single Android source set. Package renamed accordingly.
+ */
 package com.dopavin.ui.glass.backdrop.internal
+
 import org.intellij.lang.annotations.Language
+
 @Language("AGSL")
 private const val RoundedRectSDF = """
 float radiusAt(float2 coord, float4 radii) {
@@ -28,6 +39,7 @@ float2 gradSdRoundedRect(float2 coord, float2 halfSize, float radius) {
         return sign(coord) * float2(gradX, 1.0 - gradX);
     }
 }"""
+
 @Language("AGSL")
 internal const val RoundedRectRefractionShaderString = """
 uniform shader content;
@@ -63,6 +75,7 @@ half4 main(float2 coord) {
     float2 refractedCoord = coord + d * grad;
     return content.eval(refractedCoord);
 }"""
+
 @Language("AGSL")
 internal val RoundedRectRefractionWithDispersionShaderString = """
 uniform shader content;
@@ -136,6 +149,7 @@ half4 main(float2 coord) {
 
     return color;
 }"""
+
 @Language("AGSL")
 internal const val DefaultHighlightShaderString = """
 uniform float2 size;
@@ -158,6 +172,7 @@ half4 main(float2 coord) {
     float intensity = pow(abs(d), falloff);
     return color * intensity;
 }"""
+
 @Language("AGSL")
 internal const val AmbientHighlightShaderString = """
 uniform float2 size;
